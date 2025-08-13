@@ -132,17 +132,18 @@ export default function App() {
   return (
     <div className="min-h-screen text-white">
       <header className="sticky top-0 z-40 border-b border-white/20 bg-white/10 backdrop-blur-md">
-        <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between gap-4">
+        <div className="mx-auto max-w-6xl px-4 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-3">
-            <img src="/blackhole-logo.png" alt="Blackhole logo" className="h-12 w-auto" />
-            <h1 className="text-xl font-semibold">Supabase Students</h1>
+            <img src="/blackhole-logo.png" alt="Blackhole logo" className="h-10 w-auto sm:h-12" />
+            <h1 className="text-lg sm:text-xl font-semibold">Supabase Students</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full sm:w-auto flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, grade, id, email"
-              className="w-64 rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm placeholder-white/60 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+              aria-label="Search"
+              className="w-full sm:w-64 rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm placeholder-white/60 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
             />
             <button
               onClick={openAdd}
@@ -166,30 +167,30 @@ export default function App() {
         ) : students.length === 0 ? (
           <EmptyState onAdd={openAdd} />
         ) : (
-          <div className="overflow-hidden rounded-xl border border-white/20 bg-white/10 backdrop-blur-lg">
-            <table className="min-w-full text-left text-sm text-white/90">
+          <div className="overflow-x-auto rounded-xl border border-white/20 bg-white/10 backdrop-blur-lg">
+            <table className="min-w-[700px] sm:min-w-full text-left text-xs sm:text-sm text-white/90">
               <thead className="bg-white/10">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-white/70">Name</th>
-                  <th className="px-4 py-3 font-medium text-white/70">Grade</th>
-                  <th className="px-4 py-3 font-medium text-white/70">Student ID</th>
-                  <th className="px-4 py-3 font-medium text-white/70">Email</th>
-                  <th className="px-4 py-3 font-medium text-white/70">Created</th>
-                  <th className="px-4 py-3 font-medium text-white/70">Actions</th>
+                  <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Name</th>
+                  <th className="hidden sm:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Grade</th>
+                  <th className="hidden md:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Student ID</th>
+                  <th className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Email</th>
+                  <th className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Created</th>
+                  <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((s) => (
                   <tr key={s.id} className="border-t border-white/10 hover:bg-white/5 transition-colors">
-                    <td className="px-4 py-3">{s.name}</td>
-                    <td className="px-4 py-3">{s.grade}</td>
-                    <td className="px-4 py-3">{s.student_id}</td>
-                    <td className="px-4 py-3">{s.email}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2 sm:px-4 sm:py-3">{s.name}</td>
+                    <td className="hidden sm:table-cell px-3 py-2 sm:px-4 sm:py-3">{s.grade}</td>
+                    <td className="hidden md:table-cell px-3 py-2 sm:px-4 sm:py-3">{s.student_id}</td>
+                    <td className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3">{s.email}</td>
+                    <td className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap">
                       {s.created_at ? new Date(s.created_at).toLocaleString() : ''}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                    <td className="px-3 py-2 sm:px-4 sm:py-3">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         <button
                           onClick={() => openEdit(s)}
                           className="rounded-md border border-white/30 px-3 py-1 text-xs hover:bg-white/10"
@@ -218,7 +219,7 @@ export default function App() {
             className="absolute inset-0 bg-black/30"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white/10 backdrop-blur-xl border-l border-white/20 shadow-xl text-white">
+          <div className="absolute right-0 top-0 h-full w-full max-w-md overflow-y-auto bg-white/10 backdrop-blur-xl border-l border-white/20 shadow-xl text-white">
             <div className="flex items-center justify-between border-b border-white/20 p-4">
               <h2 className="text-lg font-semibold">
                 {isEditing ? 'Edit Student' : 'Add Student'}
@@ -240,7 +241,7 @@ export default function App() {
                   className="mt-1 w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm placeholder-white/60 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-white/80">Grade</label>
                   <input
