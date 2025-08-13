@@ -3,3 +3,16 @@
 html, body, #root {
   height: 100%;
 }
+
+/* Background image with a subtle dark overlay for contrast */
+body {
+  background-image: linear-gradient(rgba(12, 12, 12, 0.55), rgba(12, 12, 12, 0.65)), url('/bg.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+/* Smooth transitions for interactive elements */
+* {
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}

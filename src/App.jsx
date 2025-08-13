@@ -2,12 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { supabase, SUPABASE_TABLE } from './lib/supabaseClient'
 
 const EmptyState = ({ onAdd }) => (
-  <div className="flex flex-col items-center justify-center py-16 text-center">
-    <h2 className="text-xl font-semibold text-gray-800">No records yet</h2>
-    <p className="text-gray-500 mt-1">Add your first student to get started.</p>
+  <div className="flex flex-col items-center justify-center py-16 text-center text-white">
+    <h2 className="text-2xl font-semibold">No records yet</h2>
+    <p className="text-white/70 mt-2">Add your first student to get started.</p>
     <button
       onClick={onAdd}
-      className="mt-6 inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+      className="mt-6 inline-flex items-center rounded-md bg-orange-500 px-4 py-2 text-white hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400"
     >
       Add Student
     </button>
@@ -130,20 +130,23 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white">
+    <div className="min-h-screen text-white">
+      <header className="sticky top-0 z-40 border-b border-white/20 bg-white/10 backdrop-blur-md">
         <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between gap-4">
-          <h1 className="text-xl font-semibold">Supabase Students</h1>
+          <div className="flex items-center gap-3">
+            <img src="/blackhole-logo.png" alt="Blackhole logo" className="h-12 w-auto" />
+            <h1 className="text-xl font-semibold">Supabase Students</h1>
+          </div>
           <div className="flex items-center gap-2">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, grade, id, email"
-              className="w-64 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-64 rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm placeholder-white/60 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
             />
             <button
               onClick={openAdd}
-              className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-white text-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="inline-flex items-center rounded-md bg-orange-500 px-3 py-2 text-white text-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400"
             >
               Add
             </button>
@@ -153,31 +156,31 @@ export default function App() {
 
       <main className="mx-auto max-w-6xl px-4 py-6">
         {error && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-red-700">
+          <div className="mb-4 rounded-md border border-red-400/30 bg-red-500/15 p-3 text-red-200">
             {error}
           </div>
         )}
 
         {loading && students.length === 0 ? (
-          <div className="py-10 text-gray-500">Loading...</div>
+          <div className="py-10 text-white/70">Loading...</div>
         ) : students.length === 0 ? (
           <EmptyState onAdd={openAdd} />
         ) : (
-          <div className="overflow-hidden rounded-lg border bg-white">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-gray-50">
+          <div className="overflow-hidden rounded-xl border border-white/20 bg-white/10 backdrop-blur-lg">
+            <table className="min-w-full text-left text-sm text-white/90">
+              <thead className="bg-white/10">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-gray-500">Name</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Grade</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Student ID</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Email</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Created</th>
-                  <th className="px-4 py-3 font-medium text-gray-500">Actions</th>
+                  <th className="px-4 py-3 font-medium text-white/70">Name</th>
+                  <th className="px-4 py-3 font-medium text-white/70">Grade</th>
+                  <th className="px-4 py-3 font-medium text-white/70">Student ID</th>
+                  <th className="px-4 py-3 font-medium text-white/70">Email</th>
+                  <th className="px-4 py-3 font-medium text-white/70">Created</th>
+                  <th className="px-4 py-3 font-medium text-white/70">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((s) => (
-                  <tr key={s.id} className="border-t">
+                  <tr key={s.id} className="border-t border-white/10 hover:bg-white/5 transition-colors">
                     <td className="px-4 py-3">{s.name}</td>
                     <td className="px-4 py-3">{s.grade}</td>
                     <td className="px-4 py-3">{s.student_id}</td>
@@ -189,13 +192,13 @@ export default function App() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => openEdit(s)}
-                          className="rounded-md border px-3 py-1 text-xs hover:bg-gray-50"
+                          className="rounded-md border border-white/30 px-3 py-1 text-xs hover:bg-white/10"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => onDelete(s.id)}
-                          className="rounded-md border border-red-300 bg-red-50 px-3 py-1 text-xs text-red-700 hover:bg-red-100"
+                          className="rounded-md border border-red-400/60 bg-red-500/10 px-3 py-1 text-xs text-red-200 hover:bg-red-500/20"
                         >
                           Delete
                         </button>
@@ -215,62 +218,62 @@ export default function App() {
             className="absolute inset-0 bg-black/30"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b p-4">
+          <div className="absolute right-0 top-0 h-full w-full max-w-md bg-white/10 backdrop-blur-xl border-l border-white/20 shadow-xl text-white">
+            <div className="flex items-center justify-between border-b border-white/20 p-4">
               <h2 className="text-lg font-semibold">
                 {isEditing ? 'Edit Student' : 'Add Student'}
               </h2>
               <button
                 onClick={() => setDrawerOpen(false)}
-                className="rounded-md border px-2 py-1 text-sm"
+                className="rounded-md border border-white/30 px-2 py-1 text-sm hover:bg-white/10"
               >
                 Close
               </button>
             </div>
             <form onSubmit={onSubmit} className="p-4 space-y-4">
               <div>
-                <label className="block text-sm text-gray-600">Name</label>
+                <label className="block text-sm text-white/80">Name</label>
                 <input
                   name="name"
                   value={form.name}
                   onChange={onChange}
-                  className="mt-1 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="mt-1 w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm placeholder-white/60 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-gray-600">Grade</label>
+                  <label className="block text-sm text-white/80">Grade</label>
                   <input
                     name="grade"
                     value={form.grade}
                     onChange={onChange}
-                    className="mt-1 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="mt-1 w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm placeholder-white/60 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-600">Student ID</label>
+                  <label className="block text-sm text-white/80">Student ID</label>
                   <input
                     name="student_id"
                     value={form.student_id}
                     onChange={onChange}
-                    className="mt-1 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    className="mt-1 w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm placeholder-white/60 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-sm text-gray-600">Email</label>
+                <label className="block text-sm text-white/80">Email</label>
                 <input
                   name="email"
                   type="email"
                   value={form.email}
                   onChange={onChange}
-                  className="mt-1 w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="mt-1 w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm placeholder-white/60 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
                 />
               </div>
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="block text-sm text-gray-600">Responses (JSON)</label>
-                  <span className="text-xs text-gray-400">Optional</span>
+                  <label className="block text-sm text-white/80">Responses (JSON)</label>
+                  <span className="text-xs text-white/60">Optional</span>
                 </div>
                 <textarea
                   name="responses"
@@ -278,21 +281,21 @@ export default function App() {
                   spellCheck={false}
                   value={form.responses}
                   onChange={onChange}
-                  className="mt-1 w-full rounded-md border px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="mt-1 w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 font-mono text-xs placeholder-white/60 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
                 />
               </div>
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(false)}
-                  className="rounded-md border px-4 py-2 text-sm hover:bg-gray-50"
+                  className="rounded-md border border-white/30 px-4 py-2 text-sm hover:bg-white/10"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-white text-sm hover:bg-blue-700 disabled:opacity-60"
+                  className="inline-flex items-center rounded-md bg-orange-500 px-4 py-2 text-white text-sm hover:bg-orange-600 disabled:opacity-60"
                 >
                   {isEditing ? 'Save Changes' : 'Create'}
                 </button>
