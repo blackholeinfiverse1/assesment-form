@@ -26,3 +26,13 @@ Run the app:
 ```
 npm run dev
 ```
+
+## Gurukul module
+
+The Gurukul learning flow (Seed → Tree → Sky) lives under `src/components/Gurukul.jsx` with sample data in `src/data/gurukul.js`.
+
+- Tabs in the header let you switch between Students and Gurukul.
+- Assessment results and progress are stored locally in `localStorage`.
+- OAuth Sign-in uses Supabase (Google). Make sure the env vars above are set.
+
+Schema reference: `gurukulSchemaV1_1` exported from `src/data/gurukul.js` mirrors the PM-provided JSON structure for v1.1.

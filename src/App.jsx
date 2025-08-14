@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { supabase, SUPABASE_TABLE } from './lib/supabaseClient'
+import Gurukul from './components/Gurukul'
 
 const EmptyState = ({ onAdd }) => (
   <div className="flex flex-col items-center justify-center py-16 text-center text-white">
@@ -31,6 +32,7 @@ export default function App() {
   const [form, setForm] = useState(initialForm)
   const [isEditing, setIsEditing] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [tab, setTab] = useState('students')
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -135,81 +137,95 @@ export default function App() {
         <div className="mx-auto max-w-6xl px-4 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-3">
             <img src="/blackhole-logo.png" alt="Blackhole logo" className="h-10 w-auto sm:h-12" />
-            <h1 className="text-lg sm:text-xl font-semibold">Supabase Students</h1>
+            <h1 className="text-lg sm:text-xl font-semibold">Gurukul · Students</h1>
           </div>
           <div className="flex w-full sm:w-auto flex-col sm:flex-row items-stretch sm:items-center gap-2">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, grade, id, email"
-              aria-label="Search"
-              className="w-full sm:w-64 rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm placeholder-white/60 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-            />
-            <button
-              onClick={openAdd}
-              className="inline-flex items-center rounded-md bg-orange-500 px-3 py-2 text-white text-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400"
-            >
-              Add
-            </button>
+            <div className="inline-flex rounded-md border border-white/20 p-0.5 bg-white/10">
+              <button onClick={() => setTab('students')} className={`px-3 py-1.5 text-sm rounded ${tab === 'students' ? 'bg-white/20' : ''}`}>Students</button>
+              <button onClick={() => setTab('gurukul')} className={`px-3 py-1.5 text-sm rounded ${tab === 'gurukul' ? 'bg-white/20' : ''}`}>Gurukul</button>
+            </div>
+            {tab === 'students' && (
+              <>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search by name, grade, id, email"
+                  aria-label="Search"
+                  className="w-full sm:w-64 rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm placeholder-white/60 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+                />
+                <button
+                  onClick={openAdd}
+                  className="inline-flex items-center rounded-md bg-orange-500 px-3 py-2 text-white text-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                >
+                  Add
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6">
-        {error && (
-          <div className="mb-4 rounded-md border border-red-400/30 bg-red-500/15 p-3 text-red-200">
-            {error}
-          </div>
-        )}
+        {tab === 'students' ? (
+          <>
+            {error && (
+              <div className="mb-4 rounded-md border border-red-400/30 bg-red-500/15 p-3 text-red-200">
+                {error}
+              </div>
+            )}
 
-        {loading && students.length === 0 ? (
-          <div className="py-10 text-white/70">Loading...</div>
-        ) : students.length === 0 ? (
-          <EmptyState onAdd={openAdd} />
+            {loading && students.length === 0 ? (
+              <div className="py-10 text-white/70">Loading...</div>
+            ) : students.length === 0 ? (
+              <EmptyState onAdd={openAdd} />
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-white/20 bg-white/10 backdrop-blur-lg">
+                <table className="min-w-[700px] sm:min-w-full text-left text-xs sm:text-sm text-white/90">
+                  <thead className="bg-white/10">
+                    <tr>
+                      <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Name</th>
+                      <th className="hidden sm:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Grade</th>
+                      <th className="hidden md:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Student ID</th>
+                      <th className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Email</th>
+                      <th className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Created</th>
+                      <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((s) => (
+                      <tr key={s.id} className="border-t border-white/10 hover:bg-white/5 transition-colors">
+                        <td className="px-3 py-2 sm:px-4 sm:py-3">{s.name}</td>
+                        <td className="hidden sm:table-cell px-3 py-2 sm:px-4 sm:py-3">{s.grade}</td>
+                        <td className="hidden md:table-cell px-3 py-2 sm:px-4 sm:py-3">{s.student_id}</td>
+                        <td className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3">{s.email}</td>
+                        <td className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap">
+                          {s.created_at ? new Date(s.created_at).toLocaleString() : ''}
+                        </td>
+                        <td className="px-3 py-2 sm:px-4 sm:py-3">
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <button
+                              onClick={() => openEdit(s)}
+                              className="rounded-md border border-white/30 px-3 py-1 text-xs hover:bg-white/10"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => onDelete(s.id)}
+                              className="rounded-md border border-red-400/60 bg-red-500/10 px-3 py-1 text-xs text-red-200 hover:bg-red-500/20"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-white/20 bg-white/10 backdrop-blur-lg">
-            <table className="min-w-[700px] sm:min-w-full text-left text-xs sm:text-sm text-white/90">
-              <thead className="bg-white/10">
-                <tr>
-                  <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Name</th>
-                  <th className="hidden sm:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Grade</th>
-                  <th className="hidden md:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Student ID</th>
-                  <th className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Email</th>
-                  <th className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Created</th>
-                  <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((s) => (
-                  <tr key={s.id} className="border-t border-white/10 hover:bg-white/5 transition-colors">
-                    <td className="px-3 py-2 sm:px-4 sm:py-3">{s.name}</td>
-                    <td className="hidden sm:table-cell px-3 py-2 sm:px-4 sm:py-3">{s.grade}</td>
-                    <td className="hidden md:table-cell px-3 py-2 sm:px-4 sm:py-3">{s.student_id}</td>
-                    <td className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3">{s.email}</td>
-                    <td className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap">
-                      {s.created_at ? new Date(s.created_at).toLocaleString() : ''}
-                    </td>
-                    <td className="px-3 py-2 sm:px-4 sm:py-3">
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <button
-                          onClick={() => openEdit(s)}
-                          className="rounded-md border border-white/30 px-3 py-1 text-xs hover:bg-white/10"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => onDelete(s.id)}
-                          className="rounded-md border border-red-400/60 bg-red-500/10 px-3 py-1 text-xs text-red-200 hover:bg-red-500/20"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Gurukul />
         )}
       </main>
 
