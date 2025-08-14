@@ -36,3 +36,13 @@ The Gurukul learning flow (Seed → Tree → Sky) lives under `src/components/Gu
 - OAuth Sign-in uses Supabase (Google). Make sure the env vars above are set.
 
 Schema reference: `gurukulSchemaV1_1` exported from `src/data/gurukul.js` mirrors the PM-provided JSON structure for v1.1.
+
+## Auth (Clerk)
+
+Optional: add to `.env.local` to enable Clerk auth UI and gate `/learn`:
+
+```
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_cGxlYXNlZC16ZWJyYS01OC5jbGVyay5hY2NvdW50cy5kZXYk
+```
+
+If not set, the app will run without Clerk; Learn will remain accessible.

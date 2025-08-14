@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { CLERK_ENABLED } from '../config/auth'
 import { assessmentQuestions, knowledgebase, syllabus } from '../data/gurukul'
 
 function ProgressBar({ label, value }) {
@@ -51,7 +52,6 @@ function TierCard({ tier, items, onComplete }) {
 }
 
 export default function Gurukul() {
-  const [session, setSession] = useState(null)
   const [stage, setStage] = useState('landing')
   const [progress, setProgress] = useState(() => {
     const saved = localStorage.getItem('gurukul_progress')
@@ -73,16 +73,9 @@ export default function Gurukul() {
   }, [query])
 
   useEffect(() => {
-    let mounted = true
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return
-      setSession(data.session)
-    })
-    const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession)
-    })
+    // Keep: if later we want to link Supabase row-level data with Clerk
+    const { data } = supabase.auth.onAuthStateChange(() => {})
     return () => {
-      mounted = false
       data.subscription.unsubscribe()
     }
   }, [])
@@ -91,13 +84,7 @@ export default function Gurukul() {
     localStorage.setItem('gurukul_progress', JSON.stringify(progress))
   }, [progress])
 
-  function signInWithGoogle() {
-    supabase.auth.signInWithOAuth({ provider: 'google' })
-  }
-
-  function signOut() {
-    supabase.auth.signOut()
-  }
+  // Auth handled by Clerk; Supabase auth UI removed for simplicity.
 
   function updateAnswer(qId, choice) {
     setAnswers((a) => ({ ...a, [qId]: choice }))
@@ -132,28 +119,23 @@ export default function Gurukul() {
     setStage('dashboard')
   }
 
-  function onCompleteLesson(tier, lessonId) {
+  function onCompleteLesson(tier) {
     // simple +10% per completion
     setProgress((p) => ({ ...p, [tier]: Math.min(100, (p[tier] || 0) + 10) }))
   }
 
   return (
     <div className="text-white">
-      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">Gurukul Learning</h2>
           <p className="text-white/70 text-sm">Seed → Tree → Sky learning path</p>
         </div>
-        <div className="flex items-center gap-2">
-          {session ? (
-            <>
-              <span className="text-sm text-white/80">{session.user.email}</span>
-              <button onClick={signOut} className="rounded-md border border-white/30 px-3 py-1 text-sm hover:bg-white/10">Sign out</button>
-            </>
-          ) : (
-            <button onClick={signInWithGoogle} className="rounded-md bg-orange-500 px-3 py-1 text-sm hover:bg-orange-600">Sign in with Google</button>
-          )}
-        </div>
+          <div className="flex items-center gap-2">
+            {CLERK_ENABLED && (
+              <span className="text-sm text-white/60">Use the header to sign in with Clerk</span>
+            )}
+          </div>
       </div>
 
       {stage === 'landing' && (
