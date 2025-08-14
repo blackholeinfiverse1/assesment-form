@@ -131,11 +131,7 @@ export default function Gurukul() {
           <h2 className="text-xl font-semibold">Gurukul Learning</h2>
           <p className="text-white/70 text-sm">Seed → Tree → Sky learning path</p>
         </div>
-          <div className="flex items-center gap-2">
-            {CLERK_ENABLED && (
-              <span className="text-sm text-white/60">Use the header to sign in with Clerk</span>
-            )}
-          </div>
+          <div className="flex items-center gap-2" />
       </div>
 
       {stage === 'landing' && (

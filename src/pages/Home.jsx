@@ -1,7 +1,5 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { SignedIn, SignedOut, SignInButton, SignUpButton } from '@clerk/clerk-react'
-import { CLERK_ENABLED } from '../config/auth'
 
 export default function Home() {
   return (
@@ -15,21 +13,6 @@ export default function Home() {
           <div className="flex gap-2">
             <Link to="/learn" className="rounded-md bg-orange-500 px-4 py-2 text-sm hover:bg-orange-600">Start Learning</Link>
             <Link to="/students" className="rounded-md border border-white/30 px-4 py-2 text-sm hover:bg-white/10">Manage Students</Link>
-            {CLERK_ENABLED && (
-              <>
-                <SignedOut>
-                  <SignInButton>
-                    <button className="rounded-md border border-white/30 px-4 py-2 text-sm hover:bg-white/10">Sign In</button>
-                  </SignInButton>
-                  <SignUpButton>
-                    <button className="rounded-md bg-white/15 px-4 py-2 text-sm hover:bg-white/25">Sign Up</button>
-                  </SignUpButton>
-                </SignedOut>
-                <SignedIn>
-                  <Link to="/learn" className="rounded-md bg-white/15 px-4 py-2 text-sm hover:bg-white/25">Go to Dashboard</Link>
-                </SignedIn>
-              </>
-            )}
           </div>
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-3">
