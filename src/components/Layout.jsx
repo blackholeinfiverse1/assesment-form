@@ -4,59 +4,67 @@ import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-reac
 import { CLERK_ENABLED } from '../config/auth'
 
 export default function Layout() {
+  const [isAdmin, setIsAdmin] = React.useState(() => typeof window !== 'undefined' && sessionStorage.getItem('is_admin') === '1')
+  
+  const handleAdminLogout = () => {
+    sessionStorage.removeItem('is_admin')
+    setIsAdmin(false)
+    window.location.href = '/'
+  }
+  
   return (
     <div className="min-h-screen text-white">
       <header className="sticky top-0 z-40 border-b border-white/20 bg-white/10 backdrop-blur-md">
-        <div className="mx-auto max-w-6xl px-4 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="mx-auto max-w-6xl px-4 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/blackhole-logo.png" alt="Blackhole logo" className="h-10 w-auto sm:h-12" />
             <Link to="/" className="text-lg sm:text-xl font-semibold">Gurukul</Link>
           </div>
-          <nav className="flex items-center gap-1">
-            <NavLink
-              to="/"
-              end
-              className={({ isActive }) => `rounded-md px-3 py-1.5 text-sm ${isActive ? 'bg-white/20 border border-white/30' : 'border border-transparent hover:border-white/20 hover:bg-white/10'}`}
-            >
-              Home
-            </NavLink>
-            <NavLink
-              to="/learn"
-              className={({ isActive }) => `rounded-md px-3 py-1.5 text-sm ${isActive ? 'bg-white/20 border border-white/30' : 'border border-transparent hover:border-white/20 hover:bg-white/10'}`}
-            >
-              Learn
-            </NavLink>
-            <NavLink
-              to="/intake"
-              className={({ isActive }) => `rounded-md px-3 py-1.5 text-sm ${isActive ? 'bg-white/20 border border-white/30' : 'border border-transparent hover:border-white/20 hover:bg-white/10'}`}
-            >
-              Intake
-            </NavLink>
-            <NavLink
-              to="/students"
-              className={({ isActive }) => `rounded-md px-3 py-1.5 text-sm ${isActive ? 'bg-white/20 border border-white/30' : 'border border-transparent hover:border-white/20 hover:bg-white/10'}`}
-            >
-              Students
-            </NavLink>
-            {CLERK_ENABLED && (
-              <div className="ml-2">
-                <SignedIn>
-                  <UserButton appearance={{ elements: { userButtonBox: 'rounded-md bg-white/10 hover:bg-white/20' } }} />
-                </SignedIn>
-                <SignedOut>
-                  <SignInButton>
-                    <button className="rounded-md bg-orange-500 px-3 py-1.5 text-sm hover:bg-orange-600">Sign In</button>
-                  </SignInButton>
-                </SignedOut>
-              </div>
+          <div>
+            {isAdmin ? (
+              <button 
+                onClick={handleAdminLogout}
+                className="rounded-md bg-red-500 px-3 py-1.5 text-sm hover:bg-red-600"
+              >
+                Logout (Admin)
+              </button>
+            ) : (
+              CLERK_ENABLED && (
+                <>
+                  <SignedIn>
+                    <div className="flex items-center gap-2">
+                      <NavLink
+                        to="/profile"
+                        className={({ isActive }) => `rounded-md px-3 py-1.5 text-sm ${isActive ? 'bg-white/20 border border-white/30' : 'border border-transparent hover:border-white/20 hover:bg-white/10'}`}
+                      >
+                        Profile
+                      </NavLink>
+                      <NavLink
+                        to="/intake"
+                        className={({ isActive }) => `rounded-md px-3 py-1.5 text-sm ${isActive ? 'bg-white/20 border border-white/30' : 'border border-transparent hover:border-white/20 hover:bg-white/10'}`}
+                      >
+                        Intake
+                      </NavLink>
+                      <UserButton 
+                        appearance={{ elements: { userButtonBox: 'rounded-md bg-white/10 hover:bg-white/20' } }}
+                        afterSignOutUrl="/" 
+                      />
+                    </div>
+                  </SignedIn>
+                  <SignedOut>
+                    <SignInButton>
+                      <button className="rounded-md bg-orange-500 px-3 py-1.5 text-sm hover:bg-orange-600">Sign In</button>
+                    </SignInButton>
+                  </SignedOut>
+                </>
+              )
             )}
-          </nav>
+          </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6">
+      <main className="mx-auto max-w-6xl px-4 py-8">
         <Outlet />
       </main>
     </div>
   )
 }
-
