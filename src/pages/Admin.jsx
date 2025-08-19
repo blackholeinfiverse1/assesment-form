@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import { supabase, SUPABASE_TABLE } from "../lib/supabaseClient";
 import FormBuilder from "../components/FormBuilder";
 import { FormConfigService } from "../lib/formConfigService";
@@ -25,8 +26,10 @@ function AdminLogin({ onSuccess }) {
     e.preventDefault();
     setError("");
     if (username === "admin" && password === "admin123") {
+      toast.success("Welcome to Admin Panel");
       onSuccess();
     } else {
+      toast.error("Invalid credentials. Please try again.");
       setError("Invalid credentials");
     }
   }
@@ -168,20 +171,24 @@ export default function Admin() {
     await fetchFormConfigs();
     closeFormBuilder();
     setError("");
-    // Show success message
-    setTimeout(() => {
-      setError("Form configuration saved successfully!");
-      setTimeout(() => setError(""), 3000);
-    }, 100);
+    // The FormBuilder component already shows the success toast
   }
 
   async function deleteFormConfig(configId) {
     if (!confirm("Delete this form configuration?")) return;
 
+    const loadingToast = toast.loading("Deleting form configuration...");
+
     try {
       await FormConfigService.deleteFormConfig(configId);
       await fetchFormConfigs();
+      toast.success("Form configuration deleted successfully", {
+        id: loadingToast,
+      });
     } catch (err) {
+      toast.error(err.message || "Failed to delete form configuration", {
+        id: loadingToast,
+      });
       setError(err.message || "Failed to delete form configuration");
     }
   }
@@ -264,29 +271,50 @@ export default function Admin() {
 
     const query = supabase.from(SUPABASE_TABLE);
 
+    const loadingToast = toast.loading(
+      isEditing ? "Updating student..." : "Creating student..."
+    );
+
     const { error: err } = isEditing
       ? await query.update(payload).eq("id", form.id)
       : await query.insert(payload);
 
-    if (err) setError(err.message);
-    setLoading(false);
-    if (!err) {
+    if (err) {
+      toast.error(err.message, { id: loadingToast });
+      setError(err.message);
+    } else {
+      toast.success(
+        isEditing
+          ? "Student updated successfully"
+          : "Student created successfully",
+        { id: loadingToast }
+      );
       setDrawerOpen(false);
       setForm(initialForm);
       fetchStudents();
     }
+    setLoading(false);
   }
 
   async function onDelete(id) {
     if (!confirm("Delete this record?")) return;
+
+    const loadingToast = toast.loading("Deleting student...");
     setLoading(true);
+
     const { error: err } = await supabase
       .from(SUPABASE_TABLE)
       .delete()
       .eq("id", id);
-    if (err) setError(err.message);
+
+    if (err) {
+      toast.error(err.message, { id: loadingToast });
+      setError(err.message);
+    } else {
+      toast.success("Student deleted successfully", { id: loadingToast });
+      fetchStudents();
+    }
     setLoading(false);
-    if (!err) fetchStudents();
   }
 
   if (!isAdmin) {
@@ -317,14 +345,6 @@ export default function Admin() {
                 Add Student
               </button>
             </>
-          )}
-          {activeTab === "forms" && (
-            <button
-              onClick={() => openFormBuilder()}
-              className="btn btn-primary"
-            >
-              Create Form
-            </button>
           )}
         </div>
       </div>

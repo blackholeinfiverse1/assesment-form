@@ -1,6 +1,93 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import toast from "react-hot-toast";
 import { FIELD_TYPES, FormConfigService } from "../lib/formConfigService";
 import DynamicForm from "./DynamicForm";
+import {
+  Type,
+  Mail,
+  Hash,
+  FileText,
+  ChevronDown,
+  Circle,
+  CheckSquare,
+  List,
+  Plus,
+  Settings,
+  Eye,
+  Trash2,
+  ChevronUp,
+  ChevronDown as ChevronDownIcon,
+  GripVertical,
+  Save,
+  X,
+  Sparkles,
+  User,
+  GraduationCap,
+} from "lucide-react";
+
+// Custom Dropdown Component
+const CustomDropdown = ({ onSelect, className = "" }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  const fieldTypes = [
+    { value: FIELD_TYPES.TEXT, label: "Text Input", icon: "📝" },
+    { value: FIELD_TYPES.EMAIL, label: "Email", icon: "📧" },
+    { value: FIELD_TYPES.NUMBER, label: "Number", icon: "🔢" },
+    { value: FIELD_TYPES.TEXTAREA, label: "Long Text", icon: "📄" },
+    { value: FIELD_TYPES.SELECT, label: "Dropdown", icon: "📋" },
+    { value: FIELD_TYPES.RADIO, label: "Radio Buttons", icon: "⚪" },
+    { value: FIELD_TYPES.CHECKBOX, label: "Checkboxes", icon: "☑️" },
+    { value: FIELD_TYPES.MULTI_SELECT, label: "Multi-Select", icon: "📝" },
+  ];
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelect = (fieldType) => {
+    onSelect(fieldType);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className={`relative ${className}`} ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="appearance-none bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-3 px-4 pr-10 rounded-xl border-none cursor-pointer transition-all duration-200 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2 focus:ring-offset-transparent flex items-center gap-2"
+      >
+        <span>Add Field Type</span>
+        <ChevronDown
+          className={`w-4 h-4 transition-transform duration-200 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+          {fieldTypes.map((fieldType) => (
+            <button
+              key={fieldType.value}
+              onClick={() => handleSelect(fieldType.value)}
+              className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors duration-150 flex items-center gap-3 border-b border-gray-700 last:border-b-0"
+            >
+              <span className="text-lg">{fieldType.icon}</span>
+              <span className="font-medium">{fieldType.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const FieldEditor = ({
   field,
@@ -50,18 +137,19 @@ const FieldEditor = ({
     FIELD_TYPES.MULTI_SELECT,
   ].includes(localField.type);
 
-  const getFieldTypeIcon = (type) => {
+  const getFieldTypeIcon = (type, className = "w-4 h-4") => {
+    const iconProps = { className, strokeWidth: 2 };
     const icons = {
-      [FIELD_TYPES.TEXT]: "📝",
-      [FIELD_TYPES.EMAIL]: "📧",
-      [FIELD_TYPES.NUMBER]: "🔢",
-      [FIELD_TYPES.TEXTAREA]: "📄",
-      [FIELD_TYPES.SELECT]: "📋",
-      [FIELD_TYPES.RADIO]: "⚪",
-      [FIELD_TYPES.CHECKBOX]: "☑️",
-      [FIELD_TYPES.MULTI_SELECT]: "📝",
+      [FIELD_TYPES.TEXT]: <Type {...iconProps} />,
+      [FIELD_TYPES.EMAIL]: <Mail {...iconProps} />,
+      [FIELD_TYPES.NUMBER]: <Hash {...iconProps} />,
+      [FIELD_TYPES.TEXTAREA]: <FileText {...iconProps} />,
+      [FIELD_TYPES.SELECT]: <ChevronDown {...iconProps} />,
+      [FIELD_TYPES.RADIO]: <Circle {...iconProps} />,
+      [FIELD_TYPES.CHECKBOX]: <CheckSquare {...iconProps} />,
+      [FIELD_TYPES.MULTI_SELECT]: <List {...iconProps} />,
     };
-    return icons[type] || "📝";
+    return icons[type] || <Type {...iconProps} />;
   };
 
   const getFieldTypeName = (type) => {
@@ -79,55 +167,73 @@ const FieldEditor = ({
   };
 
   return (
-    <div className="border border-white/20 rounded-lg p-4 bg-white/5 hover:bg-white/8 transition-colors">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3 flex-1">
+    <div className="group border border-white/20 rounded-xl p-5 bg-gradient-to-r from-white/5 to-white/8 hover:from-white/8 hover:to-white/12 transition-all duration-200 shadow-lg hover:shadow-xl">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-4 flex-1">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-orange-400 hover:text-orange-300 transition-colors"
+            className="flex items-center justify-center w-8 h-8 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 hover:text-orange-300 transition-all duration-200"
           >
-            {isExpanded ? "▼" : "▶"}
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDownIcon className="w-4 h-4" />
+            )}
           </button>
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{getFieldTypeIcon(localField.type)}</span>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500/20 to-orange-600/20 border border-orange-500/30">
+              {getFieldTypeIcon(localField.type, "w-5 h-5 text-orange-400")}
+            </div>
             <div>
-              <div className="font-medium text-white">
-                {localField.label || "Untitled Field"}
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-white text-lg">
+                  {localField.label || "Untitled Field"}
+                </span>
                 {localField.required && (
-                  <span className="text-orange-300 ml-1">*</span>
+                  <span className="px-2 py-1 text-xs bg-red-500/20 text-red-300 rounded-full border border-red-500/30">
+                    Required
+                  </span>
                 )}
               </div>
-              <div className="text-xs text-white/60">
-                {getFieldTypeName(localField.type)}
-                {localField.options &&
-                  ` • ${localField.options.length} options`}
+              <div className="flex items-center gap-2 text-sm text-white/60 mt-1">
+                <span className="px-2 py-1 bg-white/10 rounded-md">
+                  {getFieldTypeName(localField.type)}
+                </span>
+                {localField.options && (
+                  <span className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded-md">
+                    {localField.options.length} options
+                  </span>
+                )}
               </div>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onMoveUp}
-            disabled={!canMoveUp}
-            className="btn-sm disabled:opacity-50"
-            title="Move up"
-          >
-            ↑
-          </button>
-          <button
-            onClick={onMoveDown}
-            disabled={!canMoveDown}
-            className="btn-sm disabled:opacity-50"
-            title="Move down"
-          >
-            ↓
-          </button>
+        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="flex items-center bg-white/10 rounded-lg p-1">
+            <button
+              onClick={onMoveUp}
+              disabled={!canMoveUp}
+              className="flex items-center justify-center w-8 h-8 rounded-md text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+              title="Move up"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onMoveDown}
+              disabled={!canMoveDown}
+              className="flex items-center justify-center w-8 h-8 rounded-md text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200"
+              title="Move down"
+            >
+              <ChevronDownIcon className="w-4 h-4" />
+            </button>
+          </div>
           <button
             onClick={onDelete}
-            className="btn-sm bg-red-500 hover:bg-red-600"
+            className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 transition-all duration-200"
             title="Delete field"
           >
-            ×
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -406,6 +512,9 @@ export default function FormBuilder({
       ...prev,
       fields: [...prev.fields, newField],
     }));
+
+    // Show success toast
+    toast.success(`${fieldTypeNames[fieldType]} added successfully`);
   };
 
   const updateField = (index, updatedField) => {
@@ -418,10 +527,14 @@ export default function FormBuilder({
   };
 
   const deleteField = (index) => {
+    const fieldToDelete = config.fields[index];
     setConfig((prev) => ({
       ...prev,
       fields: prev.fields.filter((_, i) => i !== index),
     }));
+
+    // Show success toast
+    toast.success(`${fieldToDelete.label || "Field"} deleted successfully`);
   };
 
   const moveField = (index, direction) => {
@@ -429,6 +542,8 @@ export default function FormBuilder({
     const targetIndex = direction === "up" ? index - 1 : index + 1;
 
     if (targetIndex >= 0 && targetIndex < newFields.length) {
+      const fieldName = newFields[index].label || "Field";
+
       [newFields[index], newFields[targetIndex]] = [
         newFields[targetIndex],
         newFields[index],
@@ -440,6 +555,9 @@ export default function FormBuilder({
       });
 
       setConfig((prev) => ({ ...prev, fields: newFields }));
+
+      // Show success toast
+      toast.success(`${fieldName} moved ${direction} successfully`);
     }
   };
 
@@ -451,17 +569,29 @@ export default function FormBuilder({
     const validationErrors = FormConfigService.validateFormConfig(config);
     if (validationErrors.length > 0) {
       setErrors(validationErrors);
+      toast.error("Please fix the validation errors before saving");
       setSaving(false);
       return;
     }
+
+    // Show loading toast
+    const loadingToast = toast.loading("Saving form configuration...");
 
     try {
       const savedConfig = await FormConfigService.saveFormConfig({
         ...config,
         id: config.id || `config_${Date.now()}`,
       });
+
+      toast.success("Form configuration saved successfully", {
+        id: loadingToast,
+      });
+
       onSave(savedConfig);
     } catch (error) {
+      toast.error(error.message || "Failed to save configuration", {
+        id: loadingToast,
+      });
       setErrors([error.message || "Failed to save configuration"]);
     } finally {
       setSaving(false);
@@ -518,27 +648,32 @@ export default function FormBuilder({
         </div>
 
         {/* Tab Navigation */}
-        <div className="mb-6">
-          <div className="flex border-b border-white/20">
+        <div className="mb-8">
+          <div className="flex border-b border-white/20 bg-white/5 rounded-t-xl">
             <button
               onClick={() => setActiveTab("builder")}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-6 py-3 text-sm font-semibold border-b-2 transition-all duration-200 rounded-tl-xl ${
                 activeTab === "builder"
-                  ? "border-orange-500 text-orange-400"
-                  : "border-transparent text-white/70 hover:text-white"
+                  ? "border-orange-500 text-orange-400 bg-orange-500/10"
+                  : "border-transparent text-white/70 hover:text-white hover:bg-white/10"
               }`}
             >
-              🔧 Form Builder
+              <Settings className="w-4 h-4" />
+              Form Builder
             </button>
             <button
               onClick={() => setActiveTab("preview")}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-6 py-3 text-sm font-semibold border-b-2 transition-all duration-200 ${
                 activeTab === "preview"
-                  ? "border-orange-500 text-orange-400"
-                  : "border-transparent text-white/70 hover:text-white"
+                  ? "border-orange-500 text-orange-400 bg-orange-500/10"
+                  : "border-transparent text-white/70 hover:text-white hover:bg-white/10"
               }`}
             >
-              👁️ Preview ({config.fields.length} fields)
+              <Eye className="w-4 h-4" />
+              Preview
+              <span className="px-2 py-1 text-xs bg-white/20 rounded-full">
+                {config.fields.length}
+              </span>
             </button>
           </div>
         </div>
@@ -551,118 +686,48 @@ export default function FormBuilder({
             <h4 className="text-md font-medium text-white">
               Form Fields ({config.fields.length})
             </h4>
-            <div className="relative">
-              <select
-                onChange={(e) => {
-                  if (e.target.value) {
-                    addField(e.target.value);
-                    e.target.value = ""; // Reset selection
-                  }
-                }}
-                className="appearance-none bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 pr-8 rounded-md border-none cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-orange-400"
-                defaultValue=""
-              >
-                <option value="" disabled className="bg-gray-800 text-white">
-                  + Add Field Type
-                </option>
-                <option
-                  value={FIELD_TYPES.TEXT}
-                  className="bg-gray-800 text-white"
-                >
-                  📝 Text Input
-                </option>
-                <option
-                  value={FIELD_TYPES.EMAIL}
-                  className="bg-gray-800 text-white"
-                >
-                  📧 Email
-                </option>
-                <option
-                  value={FIELD_TYPES.NUMBER}
-                  className="bg-gray-800 text-white"
-                >
-                  🔢 Number
-                </option>
-                <option
-                  value={FIELD_TYPES.TEXTAREA}
-                  className="bg-gray-800 text-white"
-                >
-                  📄 Long Text
-                </option>
-                <option
-                  value={FIELD_TYPES.SELECT}
-                  className="bg-gray-800 text-white"
-                >
-                  📋 Dropdown
-                </option>
-                <option
-                  value={FIELD_TYPES.RADIO}
-                  className="bg-gray-800 text-white"
-                >
-                  ⚪ Radio Buttons
-                </option>
-                <option
-                  value={FIELD_TYPES.CHECKBOX}
-                  className="bg-gray-800 text-white"
-                >
-                  ☑️ Checkboxes
-                </option>
-                <option
-                  value={FIELD_TYPES.MULTI_SELECT}
-                  className="bg-gray-800 text-white"
-                >
-                  📝 Multi-Select
-                </option>
-              </select>
-              {/* Custom dropdown arrow */}
-              <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                <svg
-                  className="w-4 h-4 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </div>
-            </div>
+            <CustomDropdown onSelect={addField} />
           </div>
 
           {config.fields.length === 0 && (
-            <div className="text-center py-12 border-2 border-dashed border-white/20 rounded-lg mb-4">
-              <div className="text-white/60 mb-6">
-                <div className="text-4xl mb-2">📝</div>
-                <h3 className="text-lg font-medium mb-2">
+            <div className="text-center py-16 border-2 border-dashed border-white/20 rounded-2xl mb-6 bg-gradient-to-br from-white/5 to-white/10">
+              <div className="text-white/60 mb-8">
+                <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-orange-500/20 to-orange-600/20 rounded-2xl">
+                  <Settings className="w-8 h-8 text-orange-400" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2 text-white">
                   No fields added yet
                 </h3>
-                <p className="text-sm mb-4">
-                  Choose a field type above to start building your form
+                <p className="text-sm mb-6 max-w-md mx-auto">
+                  Choose a field type above to start building your custom form,
+                  or use one of our quick start templates below
                 </p>
               </div>
 
-              <div className="text-left max-w-md mx-auto">
-                <h4 className="text-white font-medium mb-3">
-                  Quick Start Templates:
+              <div className="max-w-lg mx-auto">
+                <h4 className="text-white font-semibold mb-4 flex items-center justify-center gap-2">
+                  <Sparkles className="w-5 h-5 text-orange-400" />
+                  Quick Start Templates
                 </h4>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
                     onClick={() => {
                       addField(FIELD_TYPES.TEXT);
                       setTimeout(() => addField(FIELD_TYPES.EMAIL), 100);
                       setTimeout(() => addField(FIELD_TYPES.TEXTAREA), 200);
                     }}
-                    className="w-full text-left p-3 bg-white/5 hover:bg-white/10 rounded border border-white/20 transition-colors"
+                    className="group p-4 bg-gradient-to-br from-blue-500/10 to-blue-600/10 hover:from-blue-500/20 hover:to-blue-600/20 rounded-xl border border-blue-500/20 hover:border-blue-500/30 transition-all duration-200 text-left"
                   >
-                    <div className="font-medium text-white">
-                      📝 Basic Contact Form
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center justify-center w-8 h-8 bg-blue-500/20 rounded-lg">
+                        <User className="w-4 h-4 text-blue-400" />
+                      </div>
+                      <div className="font-semibold text-white group-hover:text-blue-200">
+                        Basic Contact Form
+                      </div>
                     </div>
-                    <div className="text-xs text-white/60">
-                      Name, Email, Message
+                    <div className="text-xs text-white/60 group-hover:text-white/80">
+                      Name, Email, Message fields
                     </div>
                   </button>
 
@@ -673,13 +738,18 @@ export default function FormBuilder({
                       setTimeout(() => addField(FIELD_TYPES.SELECT), 200);
                       setTimeout(() => addField(FIELD_TYPES.RADIO), 300);
                     }}
-                    className="w-full text-left p-3 bg-white/5 hover:bg-white/10 rounded border border-white/20 transition-colors"
+                    className="group p-4 bg-gradient-to-br from-green-500/10 to-green-600/10 hover:from-green-500/20 hover:to-green-600/20 rounded-xl border border-green-500/20 hover:border-green-500/30 transition-all duration-200 text-left"
                   >
-                    <div className="font-medium text-white">
-                      🎓 Student Registration
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center justify-center w-8 h-8 bg-green-500/20 rounded-lg">
+                        <GraduationCap className="w-4 h-4 text-green-400" />
+                      </div>
+                      <div className="font-semibold text-white group-hover:text-green-200">
+                        Student Registration
+                      </div>
                     </div>
-                    <div className="text-xs text-white/60">
-                      Name, Age, Education Level, Preferences
+                    <div className="text-xs text-white/60 group-hover:text-white/80">
+                      Name, Age, Education, Preferences
                     </div>
                   </button>
                 </div>
@@ -714,26 +784,38 @@ export default function FormBuilder({
       {activeTab === "preview" && (
         <div>
           {config.fields.length === 0 ? (
-            <div className="text-center py-12 text-white/60">
-              <div className="text-4xl mb-2">👁️</div>
-              <h3 className="text-lg font-medium mb-2">No Preview Available</h3>
-              <p className="text-sm">
-                Add some fields in the Form Builder tab to see the preview
+            <div className="text-center py-16 bg-gradient-to-br from-white/5 to-white/10 rounded-2xl border-2 border-dashed border-white/20">
+              <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500/20 to-blue-600/20 rounded-2xl">
+                <Eye className="w-8 h-8 text-blue-400" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2 text-white">
+                No Preview Available
+              </h3>
+              <p className="text-sm text-white/60 max-w-md mx-auto">
+                Add some fields in the Form Builder tab to see how your form
+                will look to students
               </p>
             </div>
           ) : (
             <div>
-              <div className="mb-4 text-sm text-white/70">
-                This is how your form will appear to students:
+              <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                <div className="flex items-center gap-2 text-blue-300 mb-2">
+                  <Eye className="w-5 h-5" />
+                  <span className="font-semibold">Live Preview</span>
+                </div>
+                <p className="text-sm text-blue-200/80">
+                  This is exactly how your form will appear to students. You can
+                  interact with it to test the user experience.
+                </p>
               </div>
-              <div className="bg-white/5 border border-white/20 rounded-lg p-6">
+              <div className="bg-gradient-to-br from-white/5 to-white/10 border border-white/20 rounded-2xl p-8 shadow-2xl">
                 <DynamicForm
                   config={config}
                   formData={previewData}
                   onChange={setPreviewData}
                   onSubmit={(e) => {
                     e.preventDefault();
-                    alert(
+                    toast.info(
                       "This is just a preview - form submission is disabled"
                     );
                   }}
@@ -748,15 +830,20 @@ export default function FormBuilder({
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/20">
-        <button onClick={onCancel} className="btn">
+      <div className="flex items-center justify-end gap-3 pt-6 border-t border-white/20">
+        <button
+          onClick={onCancel}
+          className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl transition-all duration-200"
+        >
+          <X className="w-4 h-4" />
           Cancel
         </button>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="btn btn-primary"
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
         >
+          <Save className="w-4 h-4" />
           {saving ? "Saving..." : "Save Configuration"}
         </button>
       </div>
