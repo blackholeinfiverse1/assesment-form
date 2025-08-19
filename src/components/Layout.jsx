@@ -27,6 +27,12 @@ export default function Layout() {
               Learn
             </NavLink>
             <NavLink
+              to="/intake"
+              className={({ isActive }) => `rounded-md px-3 py-1.5 text-sm ${isActive ? 'bg-white/20 border border-white/30' : 'border border-transparent hover:border-white/20 hover:bg-white/10'}`}
+            >
+              Intake
+            </NavLink>
+            <NavLink
               to="/students"
               className={({ isActive }) => `rounded-md px-3 py-1.5 text-sm ${isActive ? 'bg-white/20 border border-white/30' : 'border border-transparent hover:border-white/20 hover:bg-white/10'}`}
             >
@@ -53,5 +59,4 @@ export default function Layout() {
     </div>
   )
 }
-
 

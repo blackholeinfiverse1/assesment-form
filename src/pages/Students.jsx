@@ -20,6 +20,7 @@ const initialForm = {
   grade: '',
   student_id: '',
   email: '',
+  tier: '',
   responses: '{}',
 }
 
@@ -71,6 +72,7 @@ export default function Students() {
       grade: s.grade ?? '',
       student_id: s.student_id ?? '',
       email: s.email ?? '',
+      tier: s.tier ?? '',
       responses: JSON.stringify(s.responses ?? {}, null, 2),
     })
     setIsEditing(true)
@@ -102,6 +104,7 @@ export default function Students() {
       grade: form.grade || null,
       student_id: form.student_id || null,
       email: form.email || null,
+      tier: form.tier || null,
       responses: parsedResponses,
     }
 
@@ -166,6 +169,7 @@ export default function Students() {
                 <th className="hidden sm:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Grade</th>
                 <th className="hidden md:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Student ID</th>
                 <th className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Email</th>
+                <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Tier</th>
                 <th className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Created</th>
                 <th className="px-3 py-2 sm:px-4 sm:py-3 font-medium text-white/70">Actions</th>
               </tr>
@@ -177,6 +181,15 @@ export default function Students() {
                   <td className="hidden sm:table-cell px-3 py-2 sm:px-4 sm:py-3">{s.grade}</td>
                   <td className="hidden md:table-cell px-3 py-2 sm:px-4 sm:py-3">{s.student_id}</td>
                   <td className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3">{s.email}</td>
+                  <td className="px-3 py-2 sm:px-4 sm:py-3">
+                    {s.tier ? (
+                      <span className={`rounded-md px-2 py-0.5 text-xs border ${s.tier === 'Seed' ? 'border-green-400/50 bg-green-500/10 text-green-200' : s.tier === 'Tree' ? 'border-yellow-400/50 bg-yellow-500/10 text-yellow-200' : s.tier === 'Sky' ? 'border-blue-400/50 bg-blue-500/10 text-blue-200' : 'border-white/30 bg-white/10 text-white/80'}`}>
+                        {s.tier}
+                      </span>
+                    ) : (
+                      <span className="text-white/50 text-xs">—</span>
+                    )}
+                  </td>
                   <td className="hidden lg:table-cell px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap">
                     {s.created_at ? new Date(s.created_at).toLocaleString() : ''}
                   </td>
@@ -257,6 +270,16 @@ export default function Students() {
                   name="email"
                   type="email"
                   value={form.email}
+                  onChange={onChange}
+                  className="mt-1 w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm placeholder-white/60 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-white/80">Tier (Seed, Tree, Sky)</label>
+                <input
+                  name="tier"
+                  placeholder="Seed | Tree | Sky"
+                  value={form.tier}
                   onChange={onChange}
                   className="mt-1 w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm placeholder-white/60 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
                 />
