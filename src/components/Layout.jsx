@@ -102,11 +102,7 @@ export default function Layout() {
                     </div>
                   </SignedIn>
                   <SignedOut>
-                    <SignInButton>
-                      <button className="rounded-md bg-orange-500 px-3 py-1.5 text-sm hover:bg-orange-600">
-                        Sign In
-                      </button>
-                    </SignInButton>
+                    {/* No sign-in button in navbar - users can access sign-in through dedicated buttons on home page */}
                   </SignedOut>
                 </>
               )
