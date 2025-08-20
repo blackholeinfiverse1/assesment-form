@@ -246,6 +246,123 @@ export class FormConfigService {
     }
   }
 
+  // Save configuration as preset (without making it active)
+  static async saveAsPreset(config, presetName, presetDescription = "") {
+    try {
+      const presetConfig = {
+        ...config,
+        id: `preset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: presetName,
+        description: presetDescription,
+        is_active: false,
+        updated_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase
+        .from(FORM_CONFIG_TABLE)
+        .insert(presetConfig)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      console.error("Error saving preset:", error);
+      throw error;
+    }
+  }
+
+  // Get all presets (non-active configurations)
+  static async getAllPresets() {
+    try {
+      const { data, error } = await supabase
+        .from(FORM_CONFIG_TABLE)
+        .select("*")
+        .eq("is_active", false)
+        .order("updated_at", { ascending: false });
+
+      if (error) throw error;
+
+      return data || [];
+    } catch (error) {
+      console.error("Error fetching presets:", error);
+      return [];
+    }
+  }
+
+  // Load a specific preset by ID
+  static async loadPreset(presetId) {
+    try {
+      const { data, error } = await supabase
+        .from(FORM_CONFIG_TABLE)
+        .select("*")
+        .eq("id", presetId)
+        .single();
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      console.error("Error loading preset:", error);
+      throw error;
+    }
+  }
+
+  // Update preset metadata (name, description)
+  static async updatePresetMetadata(presetId, name, description) {
+    try {
+      const { data, error } = await supabase
+        .from(FORM_CONFIG_TABLE)
+        .update({
+          name,
+          description,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", presetId)
+        .eq("is_active", false) // Only allow updating presets, not active configs
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      console.error("Error updating preset metadata:", error);
+      throw error;
+    }
+  }
+
+  // Activate a preset (make it the active configuration)
+  static async activatePreset(presetId) {
+    try {
+      // First, deactivate all existing configs
+      await supabase
+        .from(FORM_CONFIG_TABLE)
+        .update({ is_active: false })
+        .neq("id", "dummy"); // Update all rows
+
+      // Then activate the selected preset
+      const { data, error } = await supabase
+        .from(FORM_CONFIG_TABLE)
+        .update({
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", presetId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      console.error("Error activating preset:", error);
+      throw error;
+    }
+  }
+
   // Initialize default configuration if none exists
   static async initializeDefaultConfig() {
     try {

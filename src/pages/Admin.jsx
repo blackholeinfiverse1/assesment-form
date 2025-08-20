@@ -115,6 +115,12 @@ export default function Admin() {
   const [showFormBuilder, setShowFormBuilder] = useState(false);
   const [editingFormConfig, setEditingFormConfig] = useState(null);
 
+  // Saved configs management
+  const [showActivateModal, setShowActivateModal] = useState(false);
+  const [configToActivate, setConfigToActivate] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [configToDelete, setConfigToDelete] = useState(null);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return students;
@@ -190,6 +196,67 @@ export default function Admin() {
         id: loadingToast,
       });
       setError(err.message || "Failed to delete form configuration");
+    }
+  }
+
+  // Saved configs management functions
+  function openActivateModal(config) {
+    setConfigToActivate(config);
+    setShowActivateModal(true);
+  }
+
+  function closeActivateModal() {
+    setConfigToActivate(null);
+    setShowActivateModal(false);
+  }
+
+  async function activateConfig() {
+    if (!configToActivate) return;
+
+    const loadingToast = toast.loading("Activating configuration...");
+
+    try {
+      await FormConfigService.activatePreset(configToActivate.id);
+      await fetchFormConfigs();
+      toast.success(`"${configToActivate.name}" is now active`, {
+        id: loadingToast,
+      });
+      closeActivateModal();
+    } catch (err) {
+      toast.error(err.message || "Failed to activate configuration", {
+        id: loadingToast,
+      });
+      setError(err.message || "Failed to activate configuration");
+    }
+  }
+
+  function openDeleteModal(config) {
+    setConfigToDelete(config);
+    setShowDeleteModal(true);
+  }
+
+  function closeDeleteModal() {
+    setConfigToDelete(null);
+    setShowDeleteModal(false);
+  }
+
+  async function deleteConfig() {
+    if (!configToDelete) return;
+
+    const loadingToast = toast.loading("Deleting configuration...");
+
+    try {
+      await FormConfigService.deleteFormConfig(configToDelete.id);
+      await fetchFormConfigs();
+      toast.success(`"${configToDelete.name}" deleted successfully`, {
+        id: loadingToast,
+      });
+      closeDeleteModal();
+    } catch (err) {
+      toast.error(err.message || "Failed to delete configuration", {
+        id: loadingToast,
+      });
+      setError(err.message || "Failed to delete configuration");
     }
   }
 
@@ -346,6 +413,23 @@ export default function Admin() {
               </button>
             </>
           )}
+          {activeTab === "saved-configs" && (
+            <>
+              <button onClick={fetchFormConfigs} className="btn">
+                Refresh
+              </button>
+              <button
+                onClick={() => {
+                  setEditingFormConfig(null);
+                  setActiveTab("forms");
+                  setShowFormBuilder(true);
+                }}
+                className="btn btn-primary"
+              >
+                Create New Config
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -363,6 +447,16 @@ export default function Admin() {
             Students ({students.length})
           </button>
           <button
+            onClick={() => setActiveTab("saved-configs")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "saved-configs"
+                ? "border-orange-500 text-orange-400"
+                : "border-transparent text-white/70 hover:text-white"
+            }`}
+          >
+            Saved Configs ({formConfigs.length})
+          </button>
+          <button
             onClick={() => setActiveTab("forms")}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === "forms"
@@ -370,7 +464,7 @@ export default function Admin() {
                 : "border-transparent text-white/70 hover:text-white"
             }`}
           >
-            Form Configuration
+            Form Builder
           </button>
         </div>
       </div>
@@ -796,6 +890,118 @@ export default function Admin() {
         </>
       )}
 
+      {/* Saved Configs Tab */}
+      {activeTab === "saved-configs" && (
+        <div>
+          <div className="mb-4 text-sm text-white/70">
+            Manage all your saved form configurations. The active configuration
+            is currently being used for student registrations.
+          </div>
+
+          <div className="space-y-4">
+            {formConfigs.length === 0 ? (
+              <div className="card text-center py-8">
+                <h3 className="text-lg font-medium text-white mb-2">
+                  No Configurations Found
+                </h3>
+                <p className="text-white/70 mb-4">
+                  Create your first form configuration to get started.
+                </p>
+                <button
+                  onClick={() => setActiveTab("forms")}
+                  className="btn btn-primary"
+                >
+                  Create Configuration
+                </button>
+              </div>
+            ) : (
+              formConfigs.map((config) => (
+                <div key={config.id} className="card">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-medium text-white">
+                          {config.name}
+                        </h3>
+                        {config.is_active ? (
+                          <span className="px-3 py-1 text-xs bg-green-500/20 text-green-300 rounded-full border border-green-500/30 font-medium">
+                            ✓ Active
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 text-xs bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30 font-medium">
+                            Saved
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-white/70 text-sm mb-3">
+                        {config.description || "No description provided"}
+                      </p>
+                      <div className="flex items-center gap-4 text-white/50 text-xs">
+                        <span>{config.fields?.length || 0} fields</span>
+                        <span>•</span>
+                        <span>
+                          Updated{" "}
+                          {new Date(config.updated_at).toLocaleDateString()}
+                        </span>
+                        <span>•</span>
+                        <span>
+                          Created{" "}
+                          {new Date(config.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      {!config.is_active && (
+                        <button
+                          onClick={() => openActivateModal(config)}
+                          className="btn btn-sm bg-green-500 hover:bg-green-600 text-white"
+                          title="Make this configuration active"
+                        >
+                          Activate
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setEditingFormConfig(config);
+                          setActiveTab("forms");
+                          setShowFormBuilder(true);
+                        }}
+                        className="btn btn-sm"
+                        title="Edit this configuration"
+                      >
+                        Edit
+                      </button>
+                      {!config.is_active && (
+                        <button
+                          onClick={() => openDeleteModal(config)}
+                          className="btn btn-sm bg-red-500 hover:bg-red-600 text-white"
+                          title="Delete this configuration"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="mt-6">
+            <button
+              onClick={() => {
+                setEditingFormConfig(null);
+                setActiveTab("forms");
+                setShowFormBuilder(true);
+              }}
+              className="btn btn-primary"
+            >
+              Create New Configuration
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Form Configuration Tab */}
       {activeTab === "forms" && (
         <div>
@@ -877,6 +1083,95 @@ export default function Admin() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Activate Configuration Modal */}
+      {showActivateModal && configToActivate && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">
+                Activate Configuration
+              </h3>
+              <button
+                onClick={closeActivateModal}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-white/80 mb-3">
+                Are you sure you want to activate "{configToActivate.name}"?
+              </p>
+              <p className="text-white/60 text-sm">
+                This will make it the active form configuration for all new
+                student registrations. The current active configuration will be
+                saved as a preset.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={closeActivateModal}
+                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={activateConfig}
+                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors"
+              >
+                Activate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Configuration Modal */}
+      {showDeleteModal && configToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">
+                Delete Configuration
+              </h3>
+              <button
+                onClick={closeDeleteModal}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-white/80 mb-3">
+                Are you sure you want to delete "{configToDelete.name}"?
+              </p>
+              <p className="text-red-300 text-sm font-medium">
+                ⚠️ This action cannot be undone. The configuration and all its
+                settings will be permanently removed.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={closeDeleteModal}
+                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteConfig}
+                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
