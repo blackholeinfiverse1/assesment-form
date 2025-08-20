@@ -1,21 +1,22 @@
-import React, { useState, useEffect } from 'react'
-import { FIELD_TYPES } from '../lib/formConfigService'
+import React, { useState, useEffect } from "react";
+import { FIELD_TYPES } from "../lib/formConfigService";
 
 // Individual field components
 const TextField = ({ field, value, onChange, error }) => (
   <div>
     <label className="label">
-      {field.label} {field.required && <span className="text-orange-300">*</span>}
+      {field.label}{" "}
+      {field.required && <span className="text-orange-300">*</span>}
     </label>
     {field.helpText && <div className="help">{field.helpText}</div>}
     <input
       type={field.type}
       name={field.id}
-      value={value || ''}
+      value={value || ""}
       onChange={onChange}
       required={field.required}
       placeholder={field.placeholder}
-      className={`input ${error ? 'border-red-400' : ''}`}
+      className={`input ${error ? "border-red-400" : ""}`}
       min={field.validation?.min}
       max={field.validation?.max}
       minLength={field.validation?.minLength}
@@ -24,42 +25,44 @@ const TextField = ({ field, value, onChange, error }) => (
     />
     {error && <div className="text-red-400 text-sm mt-1">{error}</div>}
   </div>
-)
+);
 
 const TextAreaField = ({ field, value, onChange, error }) => (
   <div>
     <label className="label">
-      {field.label} {field.required && <span className="text-orange-300">*</span>}
+      {field.label}{" "}
+      {field.required && <span className="text-orange-300">*</span>}
     </label>
     {field.helpText && <div className="help">{field.helpText}</div>}
     <textarea
       name={field.id}
-      value={value || ''}
+      value={value || ""}
       onChange={onChange}
       required={field.required}
       placeholder={field.placeholder}
-      className={`input min-h-[80px] ${error ? 'border-red-400' : ''}`}
+      className={`input min-h-[80px] ${error ? "border-red-400" : ""}`}
       minLength={field.validation?.minLength}
       maxLength={field.validation?.maxLength}
     />
     {error && <div className="text-red-400 text-sm mt-1">{error}</div>}
   </div>
-)
+);
 
 const SelectField = ({ field, value, onChange, error }) => (
   <div>
     <label className="label">
-      {field.label} {field.required && <span className="text-orange-300">*</span>}
+      {field.label}{" "}
+      {field.required && <span className="text-orange-300">*</span>}
     </label>
     {field.helpText && <div className="help">{field.helpText}</div>}
     <select
       name={field.id}
-      value={value || ''}
+      value={value || ""}
       onChange={onChange}
       required={field.required}
-      className={`input ${error ? 'border-red-400' : ''}`}
+      className={`input ${error ? "border-red-400" : ""}`}
     >
-      <option value="">{field.placeholder || 'Select an option'}</option>
+      <option value="">{field.placeholder || "Select an option"}</option>
       {field.options?.map((option) => (
         <option key={option.value} value={option.value}>
           {option.label}
@@ -68,17 +71,21 @@ const SelectField = ({ field, value, onChange, error }) => (
     </select>
     {error && <div className="text-red-400 text-sm mt-1">{error}</div>}
   </div>
-)
+);
 
 const RadioField = ({ field, value, onChange, error }) => (
   <div>
     <label className="label">
-      {field.label} {field.required && <span className="text-orange-300">*</span>}
+      {field.label}{" "}
+      {field.required && <span className="text-orange-300">*</span>}
     </label>
     {field.helpText && <div className="help">{field.helpText}</div>}
     <div className="space-y-2">
       {field.options?.map((option) => (
-        <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
+        <label
+          key={option.value}
+          className="flex items-center space-x-2 cursor-pointer"
+        >
           <input
             type="radio"
             name={field.id}
@@ -86,7 +93,6 @@ const RadioField = ({ field, value, onChange, error }) => (
             checked={value === option.value}
             onChange={onChange}
             required={field.required}
-            className="text-orange-500"
           />
           <span className="text-white/90">{option.label}</span>
         </label>
@@ -94,46 +100,52 @@ const RadioField = ({ field, value, onChange, error }) => (
     </div>
     {error && <div className="text-red-400 text-sm mt-1">{error}</div>}
   </div>
-)
+);
 
 const CheckboxField = ({ field, value, onChange, error }) => (
   <div>
     <label className="label">
-      {field.label} {field.required && <span className="text-orange-300">*</span>}
+      {field.label}{" "}
+      {field.required && <span className="text-orange-300">*</span>}
     </label>
     {field.helpText && <div className="help">{field.helpText}</div>}
     <div className="space-y-2">
       {field.options?.map((option) => {
-        const isChecked = Array.isArray(value) ? value.includes(option.value) : false
+        const isChecked = Array.isArray(value)
+          ? value.includes(option.value)
+          : false;
         return (
-          <label key={option.value} className="flex items-center space-x-2 cursor-pointer">
+          <label
+            key={option.value}
+            className="flex items-center space-x-2 cursor-pointer"
+          >
             <input
               type="checkbox"
               name={field.id}
               value={option.value}
               checked={isChecked}
               onChange={(e) => {
-                const currentValues = Array.isArray(value) ? value : []
+                const currentValues = Array.isArray(value) ? value : [];
                 const newValues = e.target.checked
                   ? [...currentValues, option.value]
-                  : currentValues.filter(v => v !== option.value)
-                onChange({ target: { name: field.id, value: newValues } })
+                  : currentValues.filter((v) => v !== option.value);
+                onChange({ target: { name: field.id, value: newValues } });
               }}
-              className="text-orange-500"
             />
             <span className="text-white/90">{option.label}</span>
           </label>
-        )
+        );
       })}
     </div>
     {error && <div className="text-red-400 text-sm mt-1">{error}</div>}
   </div>
-)
+);
 
 const MultiSelectField = ({ field, value, onChange, error }) => (
   <div>
     <label className="label">
-      {field.label} {field.required && <span className="text-orange-300">*</span>}
+      {field.label}{" "}
+      {field.required && <span className="text-orange-300">*</span>}
     </label>
     {field.helpText && <div className="help">{field.helpText}</div>}
     <select
@@ -141,11 +153,14 @@ const MultiSelectField = ({ field, value, onChange, error }) => (
       multiple
       value={Array.isArray(value) ? value : []}
       onChange={(e) => {
-        const selectedValues = Array.from(e.target.selectedOptions, option => option.value)
-        onChange({ target: { name: field.id, value: selectedValues } })
+        const selectedValues = Array.from(
+          e.target.selectedOptions,
+          (option) => option.value
+        );
+        onChange({ target: { name: field.id, value: selectedValues } });
       }}
       required={field.required}
-      className={`input min-h-[120px] ${error ? 'border-red-400' : ''}`}
+      className={`input min-h-[120px] ${error ? "border-red-400" : ""}`}
     >
       {field.options?.map((option) => (
         <option key={option.value} value={option.value}>
@@ -153,156 +168,207 @@ const MultiSelectField = ({ field, value, onChange, error }) => (
         </option>
       ))}
     </select>
-    <div className="text-xs text-white/60 mt-1">Hold Ctrl/Cmd to select multiple options</div>
+    <div className="text-xs text-white/60 mt-1">
+      Hold Ctrl/Cmd to select multiple options
+    </div>
     {error && <div className="text-red-400 text-sm mt-1">{error}</div>}
   </div>
-)
+);
 
 // Main dynamic form component
-export default function DynamicForm({ 
-  config, 
-  formData, 
-  onChange, 
-  onSubmit, 
-  loading = false, 
+export default function DynamicForm({
+  config,
+  formData,
+  onChange,
+  onSubmit,
+  loading = false,
   errors = {},
-  submitButtonText = 'Submit',
-  resetButtonText = 'Reset',
-  onReset
+  submitButtonText = "Submit",
+  resetButtonText = "Reset",
+  onReset,
 }) {
-  const [localErrors, setLocalErrors] = useState({})
+  const [localErrors, setLocalErrors] = useState({});
 
   // Sort fields by order
-  const sortedFields = config?.fields ? [...config.fields].sort((a, b) => (a.order || 0) - (b.order || 0)) : []
+  const sortedFields = config?.fields
+    ? [...config.fields].sort((a, b) => (a.order || 0) - (b.order || 0))
+    : [];
 
   const handleFieldChange = (e) => {
-    const { name, value } = e.target
-    onChange({ ...formData, [name]: value })
-    
+    const { name, value } = e.target;
+    onChange({ ...formData, [name]: value });
+
     // Clear field error when user starts typing
     if (localErrors[name]) {
-      setLocalErrors(prev => ({ ...prev, [name]: null }))
+      setLocalErrors((prev) => ({ ...prev, [name]: null }));
     }
-  }
+  };
 
   const validateField = (field, value) => {
-    const fieldErrors = []
+    const fieldErrors = [];
 
-    if (field.required && (!value || (typeof value === 'string' && value.trim() === ''))) {
-      fieldErrors.push(`${field.label} is required`)
+    if (
+      field.required &&
+      (!value || (typeof value === "string" && value.trim() === ""))
+    ) {
+      fieldErrors.push(`${field.label} is required`);
     }
 
     if (value && field.validation) {
-      const validation = field.validation
-      
+      const validation = field.validation;
+
       if (validation.minLength && value.length < validation.minLength) {
-        fieldErrors.push(`${field.label} must be at least ${validation.minLength} characters`)
+        fieldErrors.push(
+          `${field.label} must be at least ${validation.minLength} characters`
+        );
       }
-      
+
       if (validation.maxLength && value.length > validation.maxLength) {
-        fieldErrors.push(`${field.label} must be no more than ${validation.maxLength} characters`)
+        fieldErrors.push(
+          `${field.label} must be no more than ${validation.maxLength} characters`
+        );
       }
-      
+
       if (validation.min && Number(value) < validation.min) {
-        fieldErrors.push(`${field.label} must be at least ${validation.min}`)
+        fieldErrors.push(`${field.label} must be at least ${validation.min}`);
       }
-      
+
       if (validation.max && Number(value) > validation.max) {
-        fieldErrors.push(`${field.label} must be no more than ${validation.max}`)
+        fieldErrors.push(
+          `${field.label} must be no more than ${validation.max}`
+        );
       }
-      
+
       if (validation.pattern && !new RegExp(validation.pattern).test(value)) {
-        fieldErrors.push(`${field.label} format is invalid`)
+        fieldErrors.push(`${field.label} format is invalid`);
       }
     }
 
-    return fieldErrors
-  }
+    return fieldErrors;
+  };
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    
-    // Validate all fields
-    const newErrors = {}
-    sortedFields.forEach(field => {
-      const fieldErrors = validateField(field, formData[field.id])
-      if (fieldErrors.length > 0) {
-        newErrors[field.id] = fieldErrors[0] // Show first error
-      }
-    })
+    e.preventDefault();
 
-    setLocalErrors(newErrors)
+    // Validate all fields
+    const newErrors = {};
+    sortedFields.forEach((field) => {
+      const fieldErrors = validateField(field, formData[field.id]);
+      if (fieldErrors.length > 0) {
+        newErrors[field.id] = fieldErrors[0]; // Show first error
+      }
+    });
+
+    setLocalErrors(newErrors);
 
     // If no errors, submit the form
     if (Object.keys(newErrors).length === 0) {
-      onSubmit(e)
+      onSubmit(e);
     }
-  }
+  };
 
   const renderField = (field) => {
-    const value = formData[field.id]
-    const error = errors[field.id] || localErrors[field.id]
+    const value = formData[field.id];
+    const error = errors[field.id] || localErrors[field.id];
 
     switch (field.type) {
       case FIELD_TYPES.TEXT:
       case FIELD_TYPES.EMAIL:
       case FIELD_TYPES.NUMBER:
-        return <TextField key={field.id} field={field} value={value} onChange={handleFieldChange} error={error} />
-      
+        return (
+          <TextField
+            key={field.id}
+            field={field}
+            value={value}
+            onChange={handleFieldChange}
+            error={error}
+          />
+        );
+
       case FIELD_TYPES.TEXTAREA:
-        return <TextAreaField key={field.id} field={field} value={value} onChange={handleFieldChange} error={error} />
-      
+        return (
+          <TextAreaField
+            key={field.id}
+            field={field}
+            value={value}
+            onChange={handleFieldChange}
+            error={error}
+          />
+        );
+
       case FIELD_TYPES.SELECT:
-        return <SelectField key={field.id} field={field} value={value} onChange={handleFieldChange} error={error} />
-      
+        return (
+          <SelectField
+            key={field.id}
+            field={field}
+            value={value}
+            onChange={handleFieldChange}
+            error={error}
+          />
+        );
+
       case FIELD_TYPES.RADIO:
-        return <RadioField key={field.id} field={field} value={value} onChange={handleFieldChange} error={error} />
-      
+        return (
+          <RadioField
+            key={field.id}
+            field={field}
+            value={value}
+            onChange={handleFieldChange}
+            error={error}
+          />
+        );
+
       case FIELD_TYPES.CHECKBOX:
-        return <CheckboxField key={field.id} field={field} value={value} onChange={handleFieldChange} error={error} />
-      
+        return (
+          <CheckboxField
+            key={field.id}
+            field={field}
+            value={value}
+            onChange={handleFieldChange}
+            error={error}
+          />
+        );
+
       case FIELD_TYPES.MULTI_SELECT:
-        return <MultiSelectField key={field.id} field={field} value={value} onChange={handleFieldChange} error={error} />
-      
+        return (
+          <MultiSelectField
+            key={field.id}
+            field={field}
+            value={value}
+            onChange={handleFieldChange}
+            error={error}
+          />
+        );
+
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   if (!config || !config.fields) {
     return (
       <div className="text-white/70">
         <p>Loading form configuration...</p>
       </div>
-    )
+    );
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {sortedFields.map(field => (
-        <div key={field.id}>
-          {renderField(field)}
-        </div>
+      {sortedFields.map((field) => (
+        <div key={field.id}>{renderField(field)}</div>
       ))}
 
       <div className="flex items-center justify-end gap-2 pt-4">
         {onReset && (
-          <button
-            type="button"
-            onClick={onReset}
-            className="btn"
-          >
+          <button type="button" onClick={onReset} className="btn">
             {resetButtonText}
           </button>
         )}
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn btn-primary"
-        >
-          {loading ? 'Submitting...' : submitButtonText}
+        <button type="submit" disabled={loading} className="btn btn-primary">
+          {loading ? "Submitting..." : submitButtonText}
         </button>
       </div>
     </form>
-  )
+  );
 }

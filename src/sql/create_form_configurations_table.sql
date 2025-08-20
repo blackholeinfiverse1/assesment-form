@@ -68,7 +68,7 @@ INSERT INTO form_configurations (
       "required": false,
       "order": 3,
       "validation": {
-        "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
+        "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
       }
     },
     {

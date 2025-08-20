@@ -23,27 +23,40 @@ export default function Intake() {
         const config = await FormConfigService.getActiveFormConfig();
         setFormConfig(config);
 
+        // Get user's email for debugging and initialization
+        const userEmail = user?.primaryEmailAddress?.emailAddress;
+        console.log("User email from Clerk:", userEmail);
+
         // Initialize form with empty values based on config
         const initialForm = {};
         config.fields?.forEach((field) => {
-          initialForm[field.id] = "";
+          if (field.id === "email") {
+            // Pre-populate email with user's logged-in email
+            initialForm[field.id] = userEmail || "";
+          } else if (field.id === "name") {
+            // Pre-populate name with user's full name
+            initialForm[field.id] = user?.fullName || "";
+          } else {
+            initialForm[field.id] = "";
+          }
         });
+        console.log("Initial form data:", initialForm);
         setForm(initialForm);
 
         // Load existing profile if user is logged in
-        if (user?.primaryEmailAddress?.emailAddress) {
+        if (userEmail) {
           const { data } = await supabase
             .from(SUPABASE_TABLE)
             .select("*")
-            .eq("email", user.primaryEmailAddress?.emailAddress)
+            .eq("email", userEmail)
             .single();
 
           if (data && data.responses) {
             setIsEditing(true);
             const existingForm = {
-              name: data.name || "",
-              email: data.email || "",
               ...data.responses,
+              name: data.name || user?.fullName || "",
+              email: userEmail, // Always use current user's email (override any stored null/empty email)
             };
 
             // Convert arrays back to comma-separated strings for certain fields
@@ -61,7 +74,16 @@ export default function Intake() {
               existingForm.interests = existingForm.interests.join(", ");
             }
 
+            console.log("Setting existing form data:", existingForm);
             setForm(existingForm);
+          } else {
+            // Initialize form with user's basic info for new profiles
+            const newProfileForm = {
+              name: user?.fullName || "",
+              email: userEmail || "",
+            };
+            console.log("Setting new profile form data:", newProfileForm);
+            setForm(newProfileForm);
           }
         }
       } catch (err) {
@@ -72,12 +94,21 @@ export default function Intake() {
       }
     }
 
-    loadFormConfigAndProfile();
+    // Only run when user is loaded
+    if (user) {
+      loadFormConfigAndProfile();
+    }
   }, [user]);
 
   const handleFormChange = (newFormData) => {
+    console.log("Form data changed:", newFormData);
     setForm(newFormData);
   };
+
+  // Debug: Log form state changes
+  useEffect(() => {
+    console.log("Current form state:", form);
+  }, [form]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -129,7 +160,7 @@ export default function Intake() {
 
     const payload = {
       name: form.name || null,
-      email: form.email || user.primaryEmailAddress?.emailAddress || null,
+      email: form.email || null,
       student_id: null,
       grade: null,
       tier: null, // backend can update later

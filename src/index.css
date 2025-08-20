@@ -78,6 +78,41 @@ body {
   font-size: 14px;
   color: white;
 }
+
+/* Enhanced select dropdown styling */
+select.input {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.7)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+  cursor: pointer;
+}
+
+select.input:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Style the dropdown options */
+select.input option {
+  background-color: #1a1a1a;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+}
+
+select.input option:hover,
+select.input option:focus {
+  background-color: rgba(255, 122, 24, 0.2);
+}
+
+select.input option:checked {
+  background-color: rgba(255, 122, 24, 0.3);
+  color: white;
+}
+
 .input::placeholder,
 .textarea::placeholder {
   color: rgba(255, 255, 255, 0.6);
@@ -89,13 +124,209 @@ body {
   box-shadow: 0 0 0 2px rgba(255, 122, 24, 0.5);
   border-color: rgba(255, 122, 24, 0.7);
 }
+
+select.input:focus {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Multi-select specific styling */
+select.input[multiple] {
+  background-image: none;
+  padding-right: 12px;
+  min-height: 120px;
+}
+
+select.input[multiple] option {
+  padding: 6px 12px;
+  margin: 1px 0;
+  border-radius: 4px;
+}
+
+select.input[multiple] option:checked {
+  background-color: rgba(255, 122, 24, 0.4);
+  color: white;
+}
+
+/* Browser-specific fixes for select styling */
+select.input::-ms-expand {
+  display: none; /* Remove default arrow in IE */
+}
+
+/* Firefox specific fixes */
+@-moz-document url-prefix() {
+  select.input {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.7)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    text-indent: 0.01px;
+    text-overflow: "";
+  }
+}
+
+/* Custom Radio Button Styling */
+input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+input[type="radio"]:hover {
+  border-color: rgba(255, 122, 24, 0.6);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+input[type="radio"]:checked {
+  border-color: var(--brand);
+  background: rgba(255, 122, 24, 0.2);
+}
+
+input[type="radio"]:checked::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+
+input[type="radio"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 122, 24, 0.3);
+}
+
+/* Custom Checkbox Styling */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+input[type="checkbox"]:hover {
+  border-color: rgba(255, 122, 24, 0.6);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+input[type="checkbox"]:checked {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+input[type="checkbox"]:checked::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 6px;
+  border: 2px solid white;
+  border-top: none;
+  border-right: none;
+  transform: translate(-50%, -60%) rotate(-45deg);
+}
+
+input[type="checkbox"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 122, 24, 0.3);
+}
+
+/* Form field spacing and layout improvements */
+.space-y-2 > * + * {
+  margin-top: 0.5rem;
+}
+
+/* Ensure proper alignment for radio and checkbox labels */
+label.cursor-pointer {
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+  transition: all 0.2s ease;
+}
+
+label.cursor-pointer:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+/* Error message styling */
+.text-red-400 {
+  font-weight: 500;
+}
+
+/* Required field indicator */
+.text-orange-300 {
+  font-weight: 600;
+}
+
+/* Button styling improvements */
+.btn {
+  font-weight: 500;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: white;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary:not(:disabled):hover {
+  box-shadow: 0 4px 12px rgba(255, 122, 24, 0.3);
+}
+
+/* Form validation styling */
+.input.border-red-400 {
+  border-color: #f87171 !important;
+  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.2) !important;
+}
+
+.input.border-red-400:focus {
+  border-color: #f87171 !important;
+  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.4) !important;
+}
 .help {
   color: var(--muted-2);
   font-size: 12px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+  line-height: 1.4;
 }
 .label {
   color: var(--muted);
   font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 6px;
+  display: block;
 }
 .tag {
   border-radius: 8px;
