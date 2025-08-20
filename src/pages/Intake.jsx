@@ -258,13 +258,22 @@ export default function Intake() {
       });
     }
 
+    // Generate student ID if this is a new student
+    const generateStudentId = () => {
+      const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
+      const random = Math.floor(Math.random() * 100)
+        .toString()
+        .padStart(2, "0");
+      return `STU${timestamp}${random}`;
+    };
+
     const payload = {
       user_id: user.id,
       name: form.name || null,
       email: form.email || null,
-      student_id: null,
-      grade: null,
-      tier: null, // backend can update later
+      student_id: isEditing ? undefined : generateStudentId(), // Only set for new students
+      grade: form.education_level || null, // Map education_level to grade
+      tier: null, // Will be assigned by admin later
       responses,
       updated_at: new Date().toISOString(),
     };
