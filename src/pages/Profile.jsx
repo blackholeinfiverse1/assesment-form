@@ -14,13 +14,44 @@ export default function Profile() {
       if (!user?.id) return;
 
       try {
-        // Query by email since the database uses email as the unique identifier
+        // Query by user_id to find the user's record regardless of email changes
+        console.log("Loading profile for user_id:", user.id);
 
-        const { data, error: err } = await supabase
+        // First try to find by user_id
+        let { data, error: err } = await supabase
           .from(SUPABASE_TABLE)
           .select("*")
-          .eq("email", user.primaryEmailAddress?.emailAddress)
+          .eq("user_id", user.id)
           .single();
+
+        // If not found by user_id, try by email (for legacy records)
+        if (
+          err &&
+          err.code === "PGRST116" &&
+          user.primaryEmailAddress?.emailAddress
+        ) {
+          console.log(
+            "No record found by user_id, trying by email:",
+            user.primaryEmailAddress.emailAddress
+          );
+          const emailResult = await supabase
+            .from(SUPABASE_TABLE)
+            .select("*")
+            .eq("email", user.primaryEmailAddress.emailAddress)
+            .single();
+
+          data = emailResult.data;
+          err = emailResult.error;
+
+          // If found by email, update it to include user_id for future queries
+          if (data && !err) {
+            console.log("Found legacy record by email, updating with user_id");
+            await supabase
+              .from(SUPABASE_TABLE)
+              .update({ user_id: user.id })
+              .eq("email", user.primaryEmailAddress.emailAddress);
+          }
+        }
 
         if (err && err.code !== "PGRST116") {
           // PGRST116 means no rows found

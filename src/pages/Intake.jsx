@@ -21,42 +21,117 @@ export default function Intake() {
       try {
         // Load form configuration
         const config = await FormConfigService.getActiveFormConfig();
+        console.log("Form config loaded:", config);
+
         setFormConfig(config);
 
         // Get user's email for debugging and initialization
         const userEmail = user?.primaryEmailAddress?.emailAddress;
         console.log("User email from Clerk:", userEmail);
 
-        // Initialize form with empty values based on config
-        const initialForm = {};
-        config.fields?.forEach((field) => {
-          if (field.id === "email") {
-            // Pre-populate email with user's logged-in email
-            initialForm[field.id] = userEmail || "";
-          } else if (field.id === "name") {
-            // Pre-populate name with user's full name
-            initialForm[field.id] = user?.fullName || "";
-          } else {
-            initialForm[field.id] = "";
+        // Check email field validation specifically
+        const emailField = config.fields?.find((f) => f.id === "email");
+        console.log("Email field config:", emailField);
+
+        // Test the email pattern if it exists
+        if (emailField?.validation?.pattern && userEmail) {
+          const pattern = new RegExp(emailField.validation.pattern);
+          const isValid = pattern.test(userEmail);
+          console.log("Email pattern test:", {
+            pattern: emailField.validation.pattern,
+            email: userEmail,
+            isValid: isValid,
+          });
+
+          // If the pattern is broken (double-escaped), remove it
+          if (!isValid && emailField.validation.pattern.includes("\\\\")) {
+            console.log("Removing broken email validation pattern");
+            delete emailField.validation.pattern;
           }
+        }
+
+        // Check and fix phone field validation pattern
+        const phoneField = config.fields?.find((f) => f.id === "phone");
+        if (phoneField?.validation?.pattern) {
+          console.log("Phone field pattern:", phoneField.validation.pattern);
+
+          // If the pattern has double-escaped backslashes, fix it
+          if (phoneField.validation.pattern.includes("\\\\")) {
+            console.log("Fixing broken phone validation pattern");
+            // Remove the pattern entirely since HTML5 tel input provides basic validation
+            delete phoneField.validation.pattern;
+          }
+        }
+
+        // Initialize form with empty values based on config (only if form is completely empty)
+        setForm((prevForm) => {
+          if (Object.keys(prevForm).length === 0) {
+            const initialForm = {};
+            config.fields?.forEach((field) => {
+              if (field.id === "email") {
+                // Pre-populate email with user's logged-in email
+                initialForm[field.id] = userEmail || "";
+              } else if (field.id === "name") {
+                // Pre-populate name with user's full name
+                initialForm[field.id] = user?.fullName || "";
+              } else {
+                initialForm[field.id] = "";
+              }
+            });
+            console.log("Initial form data:", initialForm);
+            console.log("Setting initial form...");
+            return initialForm;
+          }
+          console.log("Form already has data, preserving:", prevForm);
+          return prevForm;
         });
-        console.log("Initial form data:", initialForm);
-        setForm(initialForm);
 
         // Load existing profile if user is logged in
-        if (userEmail) {
-          const { data } = await supabase
+        if (user?.id) {
+          console.log("Loading profile for user_id:", user.id);
+
+          // First try to find by user_id
+          let { data, error: profileError } = await supabase
             .from(SUPABASE_TABLE)
             .select("*")
-            .eq("email", userEmail)
+            .eq("user_id", user.id)
             .single();
+
+          // If not found by user_id, try by email (for legacy records)
+          if (profileError && profileError.code === "PGRST116" && userEmail) {
+            console.log(
+              "No record found by user_id, trying by email:",
+              userEmail
+            );
+            const emailResult = await supabase
+              .from(SUPABASE_TABLE)
+              .select("*")
+              .eq("email", userEmail)
+              .single();
+
+            data = emailResult.data;
+            profileError = emailResult.error;
+
+            // If found by email, update it to include user_id for future queries
+            if (data && !profileError) {
+              console.log(
+                "Found legacy record by email, updating with user_id"
+              );
+              await supabase
+                .from(SUPABASE_TABLE)
+                .update({ user_id: user.id })
+                .eq("email", userEmail);
+            }
+          }
+
+          console.log("Profile query result:", { data, error: profileError });
 
           if (data && data.responses) {
             setIsEditing(true);
             const existingForm = {
               ...data.responses,
               name: data.name || user?.fullName || "",
-              email: userEmail, // Always use current user's email (override any stored null/empty email)
+              email: data.email || userEmail, // Use stored email, fallback to Clerk email
             };
 
             // Convert arrays back to comma-separated strings for certain fields
@@ -75,15 +150,40 @@ export default function Intake() {
             }
 
             console.log("Setting existing form data:", existingForm);
-            setForm(existingForm);
+
+            // Only set form data if current form is empty or only has basic info
+            setForm((prevForm) => {
+              const hasUserData = Object.keys(prevForm).some(
+                (key) =>
+                  key !== "name" &&
+                  key !== "email" &&
+                  prevForm[key] &&
+                  prevForm[key] !== ""
+              );
+
+              if (hasUserData) {
+                console.log(
+                  "Preserving current form data, not overriding with database data"
+                );
+                return prevForm;
+              } else {
+                console.log("Loading database data into form");
+                return existingForm;
+              }
+            });
           } else {
-            // Initialize form with user's basic info for new profiles
-            const newProfileForm = {
-              name: user?.fullName || "",
-              email: userEmail || "",
-            };
-            console.log("Setting new profile form data:", newProfileForm);
-            setForm(newProfileForm);
+            // Initialize form with user's basic info for new profiles (only if form is empty)
+            setForm((prevForm) => {
+              if (Object.keys(prevForm).length === 0) {
+                const newProfileForm = {
+                  name: user?.fullName || "",
+                  email: userEmail || "",
+                };
+                console.log("Setting new profile form data:", newProfileForm);
+                return newProfileForm;
+              }
+              return prevForm;
+            });
           }
         }
       } catch (err) {
@@ -159,6 +259,7 @@ export default function Intake() {
     }
 
     const payload = {
+      user_id: user.id,
       name: form.name || null,
       email: form.email || null,
       student_id: null,
@@ -169,11 +270,31 @@ export default function Intake() {
     };
 
     try {
-      const { error: err } = await supabase
-        .from(SUPABASE_TABLE)
-        .upsert(payload, { onConflict: "email" });
+      console.log("Submitting payload:", payload);
+      console.log("Is editing:", isEditing);
 
-      if (err) throw err;
+      let result;
+      if (isEditing) {
+        // Update existing record
+        console.log("Updating record for user_id:", user.id);
+        result = await supabase
+          .from(SUPABASE_TABLE)
+          .update(payload)
+          .eq("user_id", user.id);
+        console.log("Update result:", result);
+      } else {
+        // Insert new record
+        console.log("Inserting new record");
+        result = await supabase.from(SUPABASE_TABLE).insert(payload);
+        console.log("Insert result:", result);
+      }
+
+      if (result.error) {
+        console.error("Database operation error:", result.error);
+        throw result.error;
+      }
+
+      console.log("Database operation successful");
 
       setSuccess(
         isEditing
