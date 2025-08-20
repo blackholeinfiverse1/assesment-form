@@ -5,6 +5,7 @@ This guide explains how to set up and use the dynamic form configuration feature
 ## Overview
 
 The form configuration system allows administrators to:
+
 - Create custom intake forms with various field types
 - Set validation rules and requirements
 - Reorder fields and customize labels
@@ -22,6 +23,7 @@ First, you need to create the `form_configurations` table in your Supabase datab
 3. Run the SQL script located at `src/sql/create_form_configurations_table.sql`
 
 This will create:
+
 - The `form_configurations` table
 - Necessary indexes for performance
 - Row Level Security policies
@@ -36,13 +38,20 @@ Ensure your `.env.local` file has the required Supabase configuration:
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 VITE_SUPABASE_TABLE=students
+
+# Admin Credentials (change these for security)
+VITE_ADMIN_USERNAME=admin
+VITE_ADMIN_PASSWORD=admin123
 ```
 
 ### 3. Admin Access
 
-The admin panel is accessible at `/admin` with the default credentials:
-- Username: `admin`
-- Password: `admin123`
+The admin panel is accessible at `/admin` with the credentials configured in your `.env.local` file:
+
+- Username: Set via `VITE_ADMIN_USERNAME` (default: `admin`)
+- Password: Set via `VITE_ADMIN_PASSWORD` (default: `admin123`)
+
+**Security Note:** Change these default credentials in your `.env.local` file for production use.
 
 ## Using the Form Configuration Feature
 
@@ -88,6 +97,7 @@ The admin panel is accessible at `/admin` with the default credentials:
 ### Form Configuration Structure
 
 Each form configuration contains:
+
 ```json
 {
   "id": "unique_identifier",
@@ -126,6 +136,7 @@ Each form configuration contains:
 ### Real-time Updates
 
 When an admin saves a form configuration:
+
 1. The configuration is stored in Supabase
 2. The previous active configuration is deactivated
 3. The new configuration becomes active
@@ -134,6 +145,7 @@ When an admin saves a form configuration:
 ### Data Storage
 
 Student responses are stored in the existing `students` table in the `responses` JSONB field. The dynamic form system:
+
 - Processes different field types appropriately
 - Handles arrays for multi-select fields
 - Converts comma-separated values for skills/interests
@@ -142,6 +154,7 @@ Student responses are stored in the existing `students` table in the `responses`
 ### Backward Compatibility
 
 The system maintains backward compatibility:
+
 - Existing student data remains accessible
 - Default configuration matches the original form
 - Missing fields are handled gracefully
@@ -158,6 +171,7 @@ The system maintains backward compatibility:
 ### Database Permissions
 
 Ensure your Supabase RLS policies allow:
+
 - Reading form configurations for all users
 - Writing form configurations for admin users
 - Reading/writing student data for authenticated users
@@ -182,16 +196,16 @@ Ensure your Supabase RLS policies allow:
 ### Field Types Constants
 
 ```javascript
-import { FIELD_TYPES } from '../lib/formConfigService'
+import { FIELD_TYPES } from "../lib/formConfigService";
 
-FIELD_TYPES.TEXT        // 'text'
-FIELD_TYPES.EMAIL       // 'email'
-FIELD_TYPES.NUMBER      // 'number'
-FIELD_TYPES.TEXTAREA    // 'textarea'
-FIELD_TYPES.SELECT      // 'select'
-FIELD_TYPES.RADIO       // 'radio'
-FIELD_TYPES.CHECKBOX    // 'checkbox'
-FIELD_TYPES.MULTI_SELECT // 'multi_select'
+FIELD_TYPES.TEXT; // 'text'
+FIELD_TYPES.EMAIL; // 'email'
+FIELD_TYPES.NUMBER; // 'number'
+FIELD_TYPES.TEXTAREA; // 'textarea'
+FIELD_TYPES.SELECT; // 'select'
+FIELD_TYPES.RADIO; // 'radio'
+FIELD_TYPES.CHECKBOX; // 'checkbox'
+FIELD_TYPES.MULTI_SELECT; // 'multi_select'
 ```
 
 ## Security Considerations
@@ -205,6 +219,7 @@ FIELD_TYPES.MULTI_SELECT // 'multi_select'
 ## Future Enhancements
 
 Potential improvements:
+
 - Drag-and-drop field reordering
 - Field templates and presets
 - Form preview functionality

@@ -25,7 +25,12 @@ function AdminLogin({ onSuccess }) {
   function submit(e) {
     e.preventDefault();
     setError("");
-    if (username === "admin" && password === "admin123") {
+
+    // Get admin credentials from environment variables
+    const adminUsername = import.meta.env.VITE_ADMIN_USERNAME || "admin";
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || "admin123";
+
+    if (username === adminUsername && password === adminPassword) {
       toast.success("Welcome to Admin Panel");
       onSuccess();
     } else {
@@ -50,7 +55,7 @@ function AdminLogin({ onSuccess }) {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           className="mt-1 w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-          placeholder="admin"
+          placeholder="Enter username"
         />
       </div>
       <div>
@@ -60,7 +65,7 @@ function AdminLogin({ onSuccess }) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="mt-1 w-full rounded-md bg-white/10 border border-white/20 px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-          placeholder="admin123"
+          placeholder="Enter password"
         />
       </div>
       <div className="flex items-center justify-end gap-2">
