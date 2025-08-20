@@ -10,12 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.23.2",
     "@supabase/supabase-js": "^2.55.0",
     "@tailwindcss/vite": "^4.1.11",
-    "@clerk/clerk-react": "^5.23.2",
-    "react-router-dom": "^6.28.0",
+    "lucide-react": "^0.540.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-hot-toast": "^2.6.0",
+    "react-router-dom": "^6.28.0",
     "tailwindcss": "^4.1.11"
   },
   "devDependencies": {
