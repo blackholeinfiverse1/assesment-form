@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { supabase, SUPABASE_TABLE } from "../lib/supabaseClient";
+import { adminAuth } from "../config/admin";
 import FormBuilder from "../components/FormBuilder";
 import { FormConfigService } from "../lib/formConfigService";
 
@@ -22,20 +23,22 @@ function AdminLogin({ onSuccess }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     setError("");
 
-    // Get admin credentials from environment variables
-    const adminUsername = import.meta.env.VITE_ADMIN_USERNAME || "admin";
-    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || "admin123";
+    // Check admin credentials against Supabase
+    const { success, error: loginError } = await adminAuth.login(
+      username,
+      password
+    );
 
-    if (username === adminUsername && password === adminPassword) {
+    if (success) {
       toast.success("Welcome to Admin Panel");
       onSuccess();
     } else {
-      toast.error("Invalid credentials. Please try again.");
-      setError("Invalid credentials");
+      toast.error(loginError || "Invalid credentials. Please try again.");
+      setError(loginError || "Invalid credentials");
     }
   }
 
