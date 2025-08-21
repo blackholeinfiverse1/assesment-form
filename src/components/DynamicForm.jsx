@@ -80,11 +80,15 @@ const RadioField = ({ field, value, onChange, error }) => (
       {field.required && <span className="text-orange-300">*</span>}
     </label>
     {field.helpText && <div className="help">{field.helpText}</div>}
-    <div className="space-y-2">
+    <div className="space-y-3">
       {field.options?.map((option) => (
         <label
           key={option.value}
-          className="flex items-center space-x-2 cursor-pointer"
+          className={`flex items-center p-4 rounded-lg border cursor-pointer transition-all ${
+            value === option.value
+              ? 'border-orange-400 bg-orange-500/20 text-white'
+              : 'border-white/20 bg-white/5 text-white/80 hover:bg-white/10'
+          }`}
         >
           <input
             type="radio"
@@ -93,8 +97,9 @@ const RadioField = ({ field, value, onChange, error }) => (
             checked={value === option.value}
             onChange={onChange}
             required={field.required}
+            className="sr-only"
           />
-          <span className="text-white/90">{option.label}</span>
+          <span className="text-sm">{option.label}</span>
         </label>
       ))}
     </div>
@@ -109,7 +114,7 @@ const CheckboxField = ({ field, value, onChange, error }) => (
       {field.required && <span className="text-orange-300">*</span>}
     </label>
     {field.helpText && <div className="help">{field.helpText}</div>}
-    <div className="space-y-2">
+    <div className="space-y-3">
       {field.options?.map((option) => {
         const isChecked = Array.isArray(value)
           ? value.includes(option.value)
@@ -117,7 +122,11 @@ const CheckboxField = ({ field, value, onChange, error }) => (
         return (
           <label
             key={option.value}
-            className="flex items-center space-x-2 cursor-pointer"
+            className={`flex items-center p-4 rounded-lg border cursor-pointer transition-all ${
+              isChecked
+                ? 'border-orange-400 bg-orange-500/20 text-white'
+                : 'border-white/20 bg-white/5 text-white/80 hover:bg-white/10'
+            }`}
           >
             <input
               type="checkbox"
@@ -131,8 +140,22 @@ const CheckboxField = ({ field, value, onChange, error }) => (
                   : currentValues.filter((v) => v !== option.value);
                 onChange({ target: { name: field.id, value: newValues } });
               }}
+              className="sr-only"
             />
-            <span className="text-white/90">{option.label}</span>
+            <div className="flex items-center">
+              <div className={`w-5 h-5 rounded border-2 mr-3 flex items-center justify-center transition-all ${
+                isChecked
+                  ? 'border-orange-400 bg-orange-500'
+                  : 'border-white/30 bg-transparent'
+              }`}>
+                {isChecked && (
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-sm">{option.label}</span>
+            </div>
           </label>
         );
       })}

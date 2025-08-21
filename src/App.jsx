@@ -7,7 +7,7 @@ import Learn from "./pages/Learn";
 import Admin from "./pages/Admin";
 import { SignInPage, SignUpPage } from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Intake from "./pages/Intake";
+import IntakeWithBackground from "./pages/Intake";
 import Profile from "./pages/Profile";
 
 export default function App() {
@@ -30,7 +30,7 @@ export default function App() {
             path="intake"
             element={
               <ProtectedRoute>
-                <Intake />
+                <IntakeWithBackground />
               </ProtectedRoute>
             }
           />

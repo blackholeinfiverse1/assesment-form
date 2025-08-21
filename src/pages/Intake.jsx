@@ -4,8 +4,10 @@ import { supabase, SUPABASE_TABLE } from "../lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import DynamicForm from "../components/DynamicForm";
 import { FormConfigService } from "../lib/formConfigService";
+import { backgroundSelectionService } from "../lib/backgroundSelectionService";
+import BackgroundSelectionWrapper from "../components/BackgroundSelectionWrapper";
 
-export default function Intake() {
+function Intake() {
   const { user } = useUser();
   const navigate = useNavigate();
   const [form, setForm] = useState({});
@@ -19,8 +21,14 @@ export default function Intake() {
   useEffect(() => {
     async function loadFormConfigAndProfile() {
       try {
-        // Load form configuration
-        const config = await FormConfigService.getActiveFormConfig();
+        // First try to get user-specific form configuration based on background
+        let config = await backgroundSelectionService.getFormConfigForUser(user.id);
+
+        // If no background-specific config, fall back to default
+        if (!config) {
+          config = await FormConfigService.getActiveFormConfig();
+        }
+
         console.log("Form config loaded:", config);
 
         setFormConfig(config);
@@ -396,3 +404,14 @@ export default function Intake() {
     </div>
   );
 }
+
+// Wrap the Intake component with BackgroundSelectionWrapper
+const IntakeWithBackground = () => {
+  return (
+    <BackgroundSelectionWrapper>
+      <Intake />
+    </BackgroundSelectionWrapper>
+  );
+};
+
+export default IntakeWithBackground;
