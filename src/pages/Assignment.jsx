@@ -18,10 +18,10 @@ export default function AssignmentPage() {
     setAssignmentAttempt(attempt);
     setCurrentView('evaluating');
 
-    try {
-      // Show evaluation progress
-      const evaluationToast = toast.loading('Evaluating your assignment with AI...');
+    // Show evaluation progress
+    const evaluationToast = toast.loading('Evaluating your assignment with AI...');
 
+    try {
       // Prepare user context for evaluation
       const userContext = CLERK_ENABLED && user ? {
         id: user.id,
@@ -56,7 +56,7 @@ export default function AssignmentPage() {
         errorMessage = 'Too many requests. Please wait a moment and try again.';
       }
 
-      toast.error(errorMessage);
+      toast.error(errorMessage, { id: evaluationToast });
       setCurrentView('assignment');
     }
   };

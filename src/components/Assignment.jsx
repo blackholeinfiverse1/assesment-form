@@ -18,18 +18,18 @@ function QuestionCard({ question, questionNumber, userAnswer, onAnswerChange, on
   const IconComponent = CATEGORY_ICONS[question.category] || BookOpen;
 
   return (
-    <div className="rounded-xl border border-white/20 bg-white/10 p-6 space-y-4">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <IconComponent className="h-5 w-5 text-orange-400" />
-            <span className="text-sm font-medium text-orange-400">{question.category}</span>
+    <div className="rounded-xl border border-white/20 bg-white/10 p-4 sm:p-6 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 min-w-fit">
+            <IconComponent className="h-5 w-5 flex-shrink-0 text-orange-400" />
+            <span className="text-sm font-medium text-orange-400 truncate">{question.category}</span>
           </div>
-          <span className="text-xs px-2 py-1 rounded-full bg-white/10 text-white/70">
+          <span className="text-xs px-2 py-1 rounded-full bg-white/10 text-white/70 whitespace-nowrap">
             {question.difficulty}
           </span>
         </div>
-        <div className="text-sm text-white/60">
+        <div className="text-sm text-white/60 whitespace-nowrap">
           Question {questionNumber} of {ASSIGNMENT_CONFIG.TOTAL_QUESTIONS}
         </div>
       </div>
@@ -182,20 +182,23 @@ export default function Assignment({ onComplete }) {
   }, [timeRemaining]);
 
   const loadAssignment = async () => {
+    // Clear any existing toasts before starting
+    toast.dismiss();
+    
+    setLoading(true);
+    setLoadingProgress(0);
+    setLoadingMessage('Initializing AI question generation...');
+
+    const loadingToast = toast.loading('Generating your personalized assignment with AI...');
+
+    // Progress callback to update UI
+    const progressCallback = (message, progress) => {
+      setLoadingMessage(message);
+      setLoadingProgress(progress);
+      console.log(`📊 Progress: ${progress.toFixed(1)}% - ${message}`);
+    };
+
     try {
-      setLoading(true);
-      setLoadingProgress(0);
-      setLoadingMessage('Initializing AI question generation...');
-
-      const loadingToast = toast.loading('Generating your personalized assignment with AI...');
-
-      // Progress callback to update UI
-      const progressCallback = (message, progress) => {
-        setLoadingMessage(message);
-        setLoadingProgress(progress);
-        console.log(`📊 Progress: ${progress.toFixed(1)}% - ${message}`);
-      };
-
       const generatedAssignment = await grokService.generateFullAssignment(progressCallback);
       setAssignment(generatedAssignment);
       setTimeRemaining(ASSIGNMENT_CONFIG.TIME_LIMIT_MINUTES * 60);
@@ -217,7 +220,8 @@ export default function Assignment({ onComplete }) {
         errorMessage = 'Could not generate enough questions due to API limitations. Please try again in a few minutes.';
       }
 
-      toast.error(errorMessage);
+      // Use the same toast ID to update the loading toast instead of creating a new one
+      toast.error(errorMessage, { id: loadingToast });
       setAssignment(null); // Ensure assignment is null on error
     } finally {
       setLoading(false);
@@ -358,21 +362,25 @@ export default function Assignment({ onComplete }) {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl mx-auto p-4 sm:p-6">
       {/* Header */}
-      <div className="text-center space-y-2">
-        <h1 className="text-2xl font-bold text-white">{assignment.title}</h1>
-        <p className="text-white/70">{assignment.description}</p>
+      <div className="text-center space-y-2 px-4 sm:px-0 max-w-full overflow-hidden">
+        <h1 className="text-xl sm:text-2xl font-bold text-white break-words">{assignment.title}</h1>
+        <p className="text-sm sm:text-base text-white/70 break-words">{assignment.description}</p>
       </div>
 
       {/* Timer and Progress */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Timer timeRemaining={timeRemaining} totalTime={ASSIGNMENT_CONFIG.TIME_LIMIT_MINUTES * 60} />
-        <ProgressIndicator
-          currentQuestion={currentQuestionIndex}
-          totalQuestions={assignment.questions.length}
-          answeredQuestions={answeredQuestions}
-        />
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+        <div className="w-full">
+          <Timer timeRemaining={timeRemaining} totalTime={ASSIGNMENT_CONFIG.TIME_LIMIT_MINUTES * 60} />
+        </div>
+        <div className="w-full">
+          <ProgressIndicator
+            currentQuestion={currentQuestionIndex}
+            totalQuestions={assignment.questions.length}
+            answeredQuestions={answeredQuestions}
+          />
+        </div>
       </div>
 
       {/* Current Question */}
@@ -387,21 +395,21 @@ export default function Assignment({ onComplete }) {
       />
 
       {/* Navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-0 sm:justify-between">
         <button
           onClick={previousQuestion}
           disabled={currentQuestionIndex === 0}
-          className="px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg border border-white/20"
+          className="w-full sm:w-auto px-4 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg border border-white/20"
         >
           Previous
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap justify-center items-center gap-2 max-w-full overflow-x-auto py-2">
           {assignment.questions.map((_, index) => (
             <button
               key={index}
               onClick={() => navigateToQuestion(index)}
-              className={`w-8 h-8 rounded text-sm ${
+              className={`w-8 h-8 rounded text-sm flex-shrink-0 ${
                 index === currentQuestionIndex
                   ? 'bg-orange-500 text-white'
                   : answeredQuestions.has(index)
@@ -417,14 +425,14 @@ export default function Assignment({ onComplete }) {
         {currentQuestionIndex === assignment.questions.length - 1 ? (
           <button
             onClick={() => handleSubmit(false)}
-            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium"
+            className="w-full sm:w-auto px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium"
           >
             Submit Assignment
           </button>
         ) : (
           <button
             onClick={nextQuestion}
-            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg"
+            className="w-full sm:w-auto px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg"
           >
             Next
           </button>
@@ -434,22 +442,22 @@ export default function Assignment({ onComplete }) {
       {/* Confirm Submit Modal */}
       {showConfirmSubmit && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-900 border border-white/20 rounded-xl p-6 max-w-md w-full mx-4">
+          <div className="bg-gray-900 border border-white/20 rounded-xl p-4 sm:p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold text-white mb-4">Submit Assignment?</h3>
-            <p className="text-white/70 mb-6">
+            <p className="text-sm sm:text-base text-white/70 mb-6">
               You have answered {answeredQuestions.size} out of {assignment.questions.length} questions. 
               Are you sure you want to submit your assignment?
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => setShowConfirmSubmit(false)}
-                className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20"
+                className="w-full px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20"
               >
                 Continue Working
               </button>
               <button
                 onClick={() => handleSubmit(false)}
-                className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
               >
                 Submit Now
               </button>
