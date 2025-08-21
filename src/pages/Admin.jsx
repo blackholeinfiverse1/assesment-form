@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { supabase, SUPABASE_TABLE } from "../lib/supabaseClient";
-import { adminAuth } from "../config/admin";
 import FormBuilder from "../components/FormBuilder";
+import StudentAnalytics from "../components/StudentAnalytics";
+import { adminAuth } from "../config/admin";
 import { FormConfigService } from "../lib/formConfigService";
+import { supabase, SUPABASE_TABLE } from "../lib/supabaseClient";
 
 const EmptyState = ({ onAdd }) => (
   <div className="flex flex-col items-center justify-center py-16 text-center text-white">
@@ -473,6 +474,17 @@ export default function Admin() {
             }`}
           >
             Form Builder
+          </button>
+
+          <button
+            onClick={() => setActiveTab("student-analytics")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "student-analytics"
+                ? "border-orange-500 text-orange-400"
+                : "border-transparent text-white/70 hover:text-white"
+            }`}
+          >
+            Student Analytics
           </button>
         </div>
       </div>
@@ -1180,6 +1192,15 @@ export default function Admin() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+
+
+      {/* Student Analytics Tab */}
+      {activeTab === "student-analytics" && (
+        <div className="card">
+          <StudentAnalytics />
         </div>
       )}
     </div>

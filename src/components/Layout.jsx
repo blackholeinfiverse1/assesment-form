@@ -90,6 +90,18 @@ export default function Layout() {
                       >
                         Intake
                       </NavLink>
+                      <NavLink
+                        to="/assignment"
+                        className={({ isActive }) =>
+                          `rounded-md px-3 py-1.5 text-sm ${
+                            isActive
+                              ? "bg-white/20 border border-white/30"
+                              : "border border-transparent hover:border-white/20 hover:bg-white/10"
+                          }`
+                        }
+                      >
+                        Assignment
+                      </NavLink>
                       <UserButton
                         appearance={{
                           elements: {

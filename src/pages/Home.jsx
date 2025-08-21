@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "react-router-dom";
 
 export default function Home() {
@@ -32,33 +31,57 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Why Assessment */}
-          <div className="bg-white/5 rounded-lg p-6 mb-8">
-            <h2 className="text-lg font-semibold mb-3 flex items-center justify-center">
-              <span className="mr-2">🎯</span>
-              Why We Need Your Details
-            </h2>
-            <p className="text-white/80 text-sm leading-relaxed">
-              Our assessment evaluates your skills in{" "}
-              <strong>coding, math, logic, and Vedic knowledge</strong> to
-              create a personalized learning path. This helps our AI place you
-              at the right level and customize your journey from beginner to
-              advanced concepts.
-            </p>
+          {/* Assessment Options */}
+          <div className="grid gap-6 md:grid-cols-2 mb-8">
+            {/* Profile Assessment */}
+            <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+              <h2 className="text-lg font-semibold mb-3 flex items-center justify-center">
+                <span className="mr-2">📝</span>
+                Profile Assessment
+              </h2>
+              <p className="text-white/80 text-sm leading-relaxed mb-4">
+                Quick intake form to understand your background, learning goals, and preferences.
+                Helps us personalize your learning experience.
+              </p>
+              <Link
+                to="/intake"
+                className="btn btn-primary w-full py-2 text-sm font-semibold hover:scale-105 transition-transform"
+              >
+                Complete Profile
+              </Link>
+            </div>
+
+            {/* AI Assessment */}
+            <div className="bg-gradient-to-br from-orange-500/10 to-purple-500/10 rounded-lg p-6 border border-orange-400/30">
+              <h2 className="text-lg font-semibold mb-3 flex items-center justify-center">
+                <span className="mr-2">🧠</span>
+                AI Knowledge Assessment
+              </h2>
+              <p className="text-white/80 text-sm leading-relaxed mb-4">
+                Quick 10-question AI-powered evaluation across <strong>coding, logic, mathematics,
+                language, culture, and Vedic knowledge</strong>. Get detailed feedback in just 30 minutes.
+              </p>
+              <Link
+                to="/learn"
+                className="btn bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 w-full py-2 text-sm font-semibold hover:scale-105 transition-transform text-white border-0"
+              >
+                Take AI Assessment
+              </Link>
+            </div>
           </div>
 
           {/* Call to Action */}
           <div className="space-y-4">
             <p className="text-white/70">
-              Ready to discover your starting point? Take our quick assessment!
+              Ready to begin your learning journey? Start with either assessment!
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
-                to="/intake"
+                to="/learn"
                 className="btn btn-primary px-8 py-3 text-lg font-semibold hover:scale-105 transition-transform"
               >
-                🚀 Start Assessment
+                🚀 Start Learning
               </Link>
               <Link
                 to="/admin"

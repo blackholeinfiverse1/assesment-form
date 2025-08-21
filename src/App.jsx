@@ -9,6 +9,7 @@ import { SignInPage, SignUpPage } from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import IntakeWithBackground from "./pages/Intake";
 import Profile from "./pages/Profile";
+import Assignment from "./pages/Assignment";
 
 export default function App() {
   return (
@@ -39,6 +40,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="assignment"
+            element={
+              <ProtectedRoute>
+                <Assignment />
               </ProtectedRoute>
             }
           />
