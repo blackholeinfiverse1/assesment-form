@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import {
   SignedIn,
@@ -14,6 +14,7 @@ export default function Layout() {
       typeof window !== "undefined" &&
       sessionStorage.getItem("is_admin") === "1"
   );
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Listen for changes to sessionStorage to update admin state
   React.useEffect(() => {
@@ -53,7 +54,31 @@ export default function Layout() {
               Gurukul
             </Link>
           </div>
-          <div>
+          
+          {/* Mobile menu button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden rounded-md p-2 text-white hover:bg-white/10"
+          >
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              {isMobileMenuOpen ? (
+                <path d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+
+          {/* Desktop navigation */}
+          <div className="hidden md:block">
             {isAdmin ? (
               <button
                 onClick={handleAdminLogout}
@@ -121,6 +146,79 @@ export default function Layout() {
             )}
           </div>
         </div>
+
+        {/* Mobile menu dropdown */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-white/20">
+            {isAdmin ? (
+              <div className="p-4">
+                <button
+                  onClick={handleAdminLogout}
+                  className="w-full rounded-md bg-red-500 px-3 py-1.5 text-sm hover:bg-red-600"
+                >
+                  Logout (Admin)
+                </button>
+              </div>
+            ) : (
+              CLERK_ENABLED && (
+                <SignedIn>
+                  <div className="space-y-2 p-4">
+                    <NavLink
+                      to="/profile"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={({ isActive }) =>
+                        `block w-full rounded-md px-3 py-1.5 text-sm ${
+                          isActive
+                            ? "bg-white/20 border border-white/30"
+                            : "border border-transparent hover:border-white/20 hover:bg-white/10"
+                        }`
+                      }
+                    >
+                      Profile
+                    </NavLink>
+                    <NavLink
+                      to="/intake"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={({ isActive }) =>
+                        `block w-full rounded-md px-3 py-1.5 text-sm ${
+                          isActive
+                            ? "bg-white/20 border border-white/30"
+                            : "border border-transparent hover:border-white/20 hover:bg-white/10"
+                        }`
+                      }
+                    >
+                      Intake
+                    </NavLink>
+                    <NavLink
+                      to="/assignment"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={({ isActive }) =>
+                        `block w-full rounded-md px-3 py-1.5 text-sm ${
+                          isActive
+                            ? "bg-white/20 border border-white/30"
+                            : "border border-transparent hover:border-white/20 hover:bg-white/10"
+                        }`
+                      }
+                    >
+                      Assignment
+                    </NavLink>
+                    <div className="pt-2">
+                      <UserButton
+                        appearance={{
+                          elements: {
+                            userButtonBox:
+                              "rounded-md bg-white/10 hover:bg-white/20",
+                          },
+                        }}
+                        afterSignOutUrl="/"
+                      />
+                    </div>
+                  </div>
+                </SignedIn>
+              )
+            )}
+          </div>
+        )}
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8">
         <Outlet />
