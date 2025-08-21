@@ -12,6 +12,10 @@ const GROK_API_KEY = import.meta.env.VITE_GROK_API_KEY;
 
 class GrokService {
   constructor() {
+    console.log('Environment variable check:', {
+      hasApiKey: !!import.meta.env.VITE_GROK_API_KEY,
+      apiKeyPrefix: import.meta.env.VITE_GROK_API_KEY ? import.meta.env.VITE_GROK_API_KEY.substring(0, 6) : 'missing'
+    });
     this.apiKey = GROK_API_KEY;
     this.baseUrl = GROK_API_BASE_URL;
     this.lastRequestTime = 0;
