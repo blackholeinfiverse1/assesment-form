@@ -19,6 +19,30 @@ export const DEFAULT_FORM_CONFIG = {
   description: "Default student intake form configuration",
   fields: [
     {
+      id: "test_radio",
+      type: FIELD_TYPES.RADIO,
+      label: "Test Radio Buttons (New Styling)",
+      required: false,
+      order: 0.5,
+      options: [
+        { value: "option1", label: "Option 1 - Modern Card Style" },
+        { value: "option2", label: "Option 2 - Orange Highlight" },
+        { value: "option3", label: "Option 3 - Hover Effects" },
+      ],
+    },
+    {
+      id: "test_checkbox",
+      type: FIELD_TYPES.CHECKBOX,
+      label: "Test Checkboxes (New Styling)",
+      required: false,
+      order: 0.7,
+      options: [
+        { value: "check1", label: "Checkbox 1 - Custom Design" },
+        { value: "check2", label: "Checkbox 2 - Orange Theme" },
+        { value: "check3", label: "Checkbox 3 - Multiple Selection" },
+      ],
+    },
+    {
       id: "name",
       type: FIELD_TYPES.TEXT,
       label: "Full Name",

@@ -56,12 +56,12 @@ const BackgroundSelectionModal = ({ isOpen, onSave, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-2xl bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 shadow-2xl">
+      <div className="relative w-full max-w-2xl bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 shadow-2xl my-8 max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-track-white/10 scrollbar-thumb-orange-500/50 hover:scrollbar-thumb-orange-500/70">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -93,10 +93,10 @@ const BackgroundSelectionModal = ({ isOpen, onSave, onClose }) => {
               {fieldOptions.map((option) => (
                 <label
                   key={option.value}
-                  className={`flex items-center p-4 rounded-lg border cursor-pointer transition-all ${
+                  className={`relative flex flex-col items-center justify-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] min-h-[60px] text-center ${
                     fieldOfStudy === option.value
-                      ? 'border-orange-400 bg-orange-500/20 text-white'
-                      : 'border-white/20 bg-white/5 text-white/80 hover:bg-white/10'
+                      ? 'border-orange-400 bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-white shadow-lg shadow-orange-500/20'
+                      : 'border-white/20 bg-white/5 text-white/80 hover:bg-white/10 hover:border-white/30'
                   }`}
                 >
                   <input
@@ -107,7 +107,12 @@ const BackgroundSelectionModal = ({ isOpen, onSave, onClose }) => {
                     onChange={(e) => setFieldOfStudy(e.target.value)}
                     className="sr-only"
                   />
-                  <span className="text-sm">{option.label}</span>
+                  <span className="text-sm font-medium leading-tight">{option.label}</span>
+                  {fieldOfStudy === option.value && (
+                    <div className="absolute top-2 right-2">
+                      <div className="w-2 h-2 rounded-full bg-orange-400"></div>
+                    </div>
+                  )}
                 </label>
               ))}
             </div>
@@ -124,10 +129,10 @@ const BackgroundSelectionModal = ({ isOpen, onSave, onClose }) => {
               {classLevelOptions.map((option) => (
                 <label
                   key={option.value}
-                  className={`flex items-center p-4 rounded-lg border cursor-pointer transition-all ${
+                  className={`relative flex flex-col items-center justify-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] min-h-[60px] text-center ${
                     classLevel === option.value
-                      ? 'border-orange-400 bg-orange-500/20 text-white'
-                      : 'border-white/20 bg-white/5 text-white/80 hover:bg-white/10'
+                      ? 'border-orange-400 bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-white shadow-lg shadow-orange-500/20'
+                      : 'border-white/20 bg-white/5 text-white/80 hover:bg-white/10 hover:border-white/30'
                   }`}
                 >
                   <input
@@ -138,7 +143,12 @@ const BackgroundSelectionModal = ({ isOpen, onSave, onClose }) => {
                     onChange={(e) => setClassLevel(e.target.value)}
                     className="sr-only"
                   />
-                  <span className="text-sm">{option.label}</span>
+                  <span className="text-sm font-medium leading-tight">{option.label}</span>
+                  {classLevel === option.value && (
+                    <div className="absolute top-2 right-2">
+                      <div className="w-2 h-2 rounded-full bg-orange-400"></div>
+                    </div>
+                  )}
                 </label>
               ))}
             </div>
@@ -155,10 +165,10 @@ const BackgroundSelectionModal = ({ isOpen, onSave, onClose }) => {
               {learningGoalOptions.map((option) => (
                 <label
                   key={option.value}
-                  className={`flex items-center p-4 rounded-lg border cursor-pointer transition-all ${
+                  className={`relative flex flex-col items-center justify-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] min-h-[60px] text-center ${
                     learningGoals === option.value
-                      ? 'border-orange-400 bg-orange-500/20 text-white'
-                      : 'border-white/20 bg-white/5 text-white/80 hover:bg-white/10'
+                      ? 'border-orange-400 bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-white shadow-lg shadow-orange-500/20'
+                      : 'border-white/20 bg-white/5 text-white/80 hover:bg-white/10 hover:border-white/30'
                   }`}
                 >
                   <input
@@ -169,7 +179,12 @@ const BackgroundSelectionModal = ({ isOpen, onSave, onClose }) => {
                     onChange={(e) => setLearningGoals(e.target.value)}
                     className="sr-only"
                   />
-                  <span className="text-sm">{option.label}</span>
+                  <span className="text-sm font-medium leading-tight">{option.label}</span>
+                  {learningGoals === option.value && (
+                    <div className="absolute top-2 right-2">
+                      <div className="w-2 h-2 rounded-full bg-orange-400"></div>
+                    </div>
+                  )}
                 </label>
               ))}
             </div>
