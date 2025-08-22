@@ -320,9 +320,14 @@ function Intake() {
       );
       setIsEditing(true);
 
-      // Redirect to profile page after a brief delay
+      // Redirect to assignment page after a brief delay for new users
+      // or stay on profile page for existing users who are editing
       setTimeout(() => {
-        navigate("/profile");
+        if (isEditing) {
+          navigate("/profile");
+        } else {
+          navigate("/assignment");
+        }
       }, 1500);
     } catch (err) {
       setError(err?.message || "Failed to submit");

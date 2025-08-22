@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
 import { useEffect } from "react";
 import { Target, BarChart3, Zap } from "lucide-react";
+import { SignedIn, SignedOut } from "@clerk/clerk-react";
+import StudentRedirect from "../components/StudentRedirect";
+import { CLERK_ENABLED } from "../config/auth";
 
 export default function Home() {
   // Disable scrolling completely on this page
@@ -14,7 +17,7 @@ export default function Home() {
     };
   }, []);
 
-  return (
+  const homeContent = (
     <div className="fixed inset-0 flex items-center justify-center p-4 text-white overflow-hidden">
       <div className="w-full max-w-4xl h-full flex items-center justify-center overflow-hidden">
         <div className="bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-6 sm:p-8 space-y-4 overflow-hidden max-h-full relative">
@@ -129,5 +132,24 @@ export default function Home() {
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {CLERK_ENABLED ? (
+        <>
+          <SignedOut>
+            {homeContent}
+          </SignedOut>
+          <SignedIn>
+            <StudentRedirect>
+              {homeContent}
+            </StudentRedirect>
+          </SignedIn>
+        </>
+      ) : (
+        homeContent
+      )}
+    </>
   );
 }

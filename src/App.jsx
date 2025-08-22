@@ -7,6 +7,7 @@ import Learn from "./pages/Learn";
 import Admin from "./pages/Admin";
 import { SignInPage, SignUpPage } from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
+import StudentRedirect from "./components/StudentRedirect";
 import IntakeWithBackground from "./pages/Intake";
 import Profile from "./pages/Profile";
 import Assignment from "./pages/Assignment";
@@ -31,7 +32,9 @@ export default function App() {
             path="intake"
             element={
               <ProtectedRoute>
-                <IntakeWithBackground />
+                <StudentRedirect>
+                  <IntakeWithBackground />
+                </StudentRedirect>
               </ProtectedRoute>
             }
           />
@@ -47,7 +50,9 @@ export default function App() {
             path="assignment"
             element={
               <ProtectedRoute>
-                <Assignment />
+                <StudentRedirect>
+                  <Assignment />
+                </StudentRedirect>
               </ProtectedRoute>
             }
           />
