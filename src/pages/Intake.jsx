@@ -347,7 +347,10 @@ function Intake() {
     return (
       <div className="text-white">
         <div className="card">
-          <p className="text-white/70">Loading intake form...</p>
+          <div className="flex items-center gap-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-400"></div>
+            <p className="text-white/70">Loading intake form...</p>
+          </div>
         </div>
       </div>
     );
@@ -356,52 +359,65 @@ function Intake() {
   return (
     <div className="text-white">
       <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">
-              {isEditing ? "Edit Profile" : "Student Intake"}
-            </h2>
-            <p className="text-white/70 text-sm">
-              {isEditing
-                ? "Update your profile information below. Changes will be saved automatically."
-                : "Tell us about yourself so we can assess your Seed → Tree → Sky tier."}
-            </p>
+        <div className="card">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-white via-orange-100 to-orange-200 bg-clip-text text-transparent">
+                {isEditing ? "📝 Edit Profile" : "📋 Student Intake"}
+              </h2>
+              <p className="text-white/80 text-sm mt-2">
+                {isEditing
+                  ? "Update your profile information below. Changes will be saved automatically."
+                  : "Tell us about yourself so we can determine your personalized Seed → Tree → Sky learning tier."}
+              </p>
+            </div>
+            {isEditing && (
+              <Link
+                to="/dashboard"
+                className="bg-gradient-to-r from-orange-600 via-orange-500 to-red-600 hover:from-orange-700 hover:via-orange-600 hover:to-red-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-orange-500/30 flex items-center gap-2"
+              >
+                ← Back to Dashboard
+              </Link>
+            )}
           </div>
-          {isEditing && (
-            <Link
-              to="/dashboard"
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-lg text-white text-sm font-medium transition-all duration-200 flex items-center gap-2"
-            >
-              ← Back to Dashboard
-            </Link>
-          )}
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 rounded-md border border-red-400/30 bg-red-500/15 p-3 text-red-200">
-          {error}
+        <div className="mb-4 card border-red-400/30 bg-red-500/15">
+          <div className="flex items-center gap-2">
+            <span className="text-red-400">⚠️</span>
+            <span className="text-red-200">{error}</span>
+          </div>
         </div>
       )}
       {success && (
-        <div className="mb-4 rounded-md border border-green-400/30 bg-green-500/15 p-3 text-green-200">
-          {success}
+        <div className="mb-4 card border-green-400/30 bg-green-500/15">
+          <div className="flex items-center gap-2">
+            <span className="text-green-400">✅</span>
+            <span className="text-green-200">{success}</span>
+          </div>
         </div>
       )}
 
       <div className="card">
-        <div className="toolbar mb-4">
-          <div>
-            <h3 className="text-lg font-semibold">
-              {formConfig?.name ||
-                (isEditing ? "Update Your Information" : "Profile Intake")}
-            </h3>
-          </div>
-          {formConfig?.description && (
-            <div className="text-sm text-white/70 mt-1">
-              {formConfig.description}
+        <div className="toolbar mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-500/20 rounded-lg border border-orange-400/30">
+              <span className="text-orange-300 text-xl">📋</span>
             </div>
-          )}
+            <div>
+              <h3 className="text-lg font-semibold">
+                {formConfig?.name ||
+                  (isEditing ? "Update Your Information" : "Profile Assessment Form")}
+              </h3>
+              {formConfig?.description && (
+                <div className="text-sm text-white/70 mt-1">
+                  {formConfig.description}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <DynamicForm
@@ -411,8 +427,8 @@ function Intake() {
           onSubmit={handleSubmit}
           onReset={handleReset}
           loading={loading}
-          submitButtonText={isEditing ? "Update Profile" : "Submit"}
-          resetButtonText="Reset"
+          submitButtonText={isEditing ? "💾 Update Profile" : "🚀 Submit & Continue"}
+          resetButtonText="🔄 Reset Form"
         />
       </div>
     </div>
