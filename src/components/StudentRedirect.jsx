@@ -74,6 +74,13 @@ export default function StudentRedirect({ children }) {
           return;
         }
 
+        // If user is trying to access dashboard without completing intake
+        if (currentPath === "/dashboard" && !hasIntakeData) {
+          console.log("➡️ Redirecting to intake (dashboard requires completed intake)");
+          navigate("/intake", { replace: true });
+          return;
+        }
+
         // If user completed intake and is on intake page, redirect to assignment
         if (currentPath === "/intake" && hasIntakeData) {
           console.log("➡️ Student has completed intake, redirecting to assignment");

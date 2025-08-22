@@ -92,7 +92,7 @@ export default function Layout() {
                   <SignedIn>
                     <div className="flex items-center gap-2">
                       <NavLink
-                        to="/profile"
+                        to="/dashboard"
                         className={({ isActive }) =>
                           `rounded-md px-3 py-1.5 text-sm ${
                             isActive
@@ -101,7 +101,7 @@ export default function Layout() {
                           }`
                         }
                       >
-                        Profile
+                        Dashboard
                       </NavLink>
                       <NavLink
                         to="/intake"
@@ -164,7 +164,7 @@ export default function Layout() {
                 <SignedIn>
                   <div className="space-y-2 p-4">
                     <NavLink
-                      to="/profile"
+                      to="/dashboard"
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={({ isActive }) =>
                         `block w-full rounded-md px-3 py-1.5 text-sm ${
@@ -174,7 +174,7 @@ export default function Layout() {
                         }`
                       }
                     >
-                      Profile
+                      Dashboard
                     </NavLink>
                     <NavLink
                       to="/intake"

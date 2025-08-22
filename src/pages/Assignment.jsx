@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabaseClient';
 
 export default function AssignmentPage() {
   const [currentView, setCurrentView] = useState('assignment'); // 'assignment', 'evaluating', 'results'
-  const [assignmentAttempt, setAssignmentAttempt] = useState(null);
+  const [_assignmentAttempt, setAssignmentAttempt] = useState(null);
   const [evaluationResults, setEvaluationResults] = useState(null);
   const { user } = useUser();
 
@@ -240,8 +240,8 @@ export default function AssignmentPage() {
   };
 
   const handleBackToDashboard = () => {
-    // Navigate back to learn page or dashboard
-    window.location.href = '/learn';
+    // Navigate back to dashboard
+    window.location.href = '/dashboard';
   };
 
   if (currentView === 'evaluating') {

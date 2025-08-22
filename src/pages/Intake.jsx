@@ -316,18 +316,13 @@ function Intake() {
       setSuccess(
         isEditing
           ? "Profile updated successfully!"
-          : "Profile created successfully!"
+          : "Welcome to Gurukul! Redirecting you to your assessment..."
       );
       setIsEditing(true);
 
-      // Redirect to assignment page after a brief delay for new users
-      // or stay on profile page for existing users who are editing
+      // Always redirect to assignment page after completion
       setTimeout(() => {
-        if (isEditing) {
-          navigate("/profile");
-        } else {
-          navigate("/assignment");
-        }
+        navigate("/assignment");
       }, 1500);
     } catch (err) {
       setError(err?.message || "Failed to submit");

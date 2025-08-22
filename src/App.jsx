@@ -3,13 +3,12 @@ import { Route, Routes } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
-import Learn from "./pages/Learn";
+import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import { SignInPage, SignUpPage } from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import StudentRedirect from "./components/StudentRedirect";
 import IntakeWithBackground from "./pages/Intake";
-import Profile from "./pages/Profile";
 import Assignment from "./pages/Assignment";
 
 export default function App() {
@@ -21,10 +20,10 @@ export default function App() {
           <Route path="sign-in" element={<SignInPage />} />
           <Route path="sign-up" element={<SignUpPage />} />
           <Route
-            path="learn"
+            path="dashboard"
             element={
               <ProtectedRoute>
-                <Learn />
+                <Dashboard />
               </ProtectedRoute>
             }
           />
@@ -35,14 +34,6 @@ export default function App() {
                 <StudentRedirect>
                   <IntakeWithBackground />
                 </StudentRedirect>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="profile"
-            element={
-              <ProtectedRoute>
-                <Profile />
               </ProtectedRoute>
             }
           />

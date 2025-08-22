@@ -116,7 +116,7 @@ export default function Home() {
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
               <Link
-                to="/learn"
+                to="/dashboard"
                 className="bg-gradient-to-r from-orange-600 via-orange-500 to-red-600 hover:from-orange-700 hover:via-orange-600 hover:to-red-700 text-white px-6 sm:px-8 py-3 rounded-xl text-sm sm:text-base font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 w-full sm:w-auto border border-orange-500/30"
               >
                 🚀 Start Learning
