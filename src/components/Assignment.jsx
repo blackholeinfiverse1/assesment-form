@@ -2,7 +2,8 @@ import { AlertCircle, BookOpen, Brain, Calculator, Clock, Code, Globe, Newspaper
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { ASSIGNMENT_CATEGORIES, ASSIGNMENT_CONFIG } from '../data/assignment';
-import { grokService } from '../lib/grokService';
+import { fieldBasedQuestionService } from '../lib/fieldBasedQuestionService';
+import { supabase, SUPABASE_TABLE } from '../lib/supabaseClient';
 
 const CATEGORY_ICONS = {
   [ASSIGNMENT_CATEGORIES.CODING]: Code,
@@ -187,9 +188,9 @@ export default function Assignment({ onComplete }) {
     
     setLoading(true);
     setLoadingProgress(0);
-    setLoadingMessage('Initializing AI question generation...');
+    setLoadingMessage('Loading student profile...');
 
-    const loadingToast = toast.loading('Generating your personalized assignment with AI...');
+    const loadingToast = toast.loading('Generating your personalized field-based assessment...');
 
     // Progress callback to update UI
     const progressCallback = (message, progress) => {
@@ -199,25 +200,67 @@ export default function Assignment({ onComplete }) {
     };
 
     try {
-      const generatedAssignment = await grokService.generateFullAssignment(progressCallback);
+      // Get student data for field-based question generation
+      progressCallback('Fetching student profile...', 10);
+      
+      let studentData = {};
+      try {
+        const { data: students, error: studentError } = await supabase
+          .from(SUPABASE_TABLE)
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (!studentError && students && students.length > 0) {
+          studentData = students[0];
+          progressCallback('Student profile loaded successfully', 30);
+        } else {
+          console.warn('No student data found, using default profile');
+          progressCallback('Using default profile for question generation', 30);
+        }
+      } catch (studentError) {
+        console.warn('Could not fetch student data:', studentError);
+        progressCallback('Using default profile for question generation', 30);
+      }
+
+      progressCallback('Analyzing student background and study field...', 50);
+      
+      // Generate questions based on student's field
+      progressCallback('Selecting field-appropriate questions...', 70);
+      const questions = await fieldBasedQuestionService.generateQuestionsForStudent(
+        studentData,
+        ASSIGNMENT_CONFIG.TOTAL_QUESTIONS
+      );
+
+      progressCallback('Finalizing assignment...', 90);
+
+      const generatedAssignment = {
+        id: `field_assessment_${Date.now()}`,
+        title: 'Field-Based Assessment',
+        description: 'Personalized assessment based on your study field and background',
+        questions: questions,
+        student_field: studentData.field_of_study || 'General',
+        created_at: new Date().toISOString()
+      };
+
+      progressCallback('Assignment ready!', 100);
+      
       setAssignment(generatedAssignment);
       setTimeRemaining(ASSIGNMENT_CONFIG.TIME_LIMIT_MINUTES * 60);
       setStartTime(new Date());
 
-      toast.success('Assignment loaded successfully!', { id: loadingToast });
+      toast.success('Field-based assignment loaded successfully!', { id: loadingToast });
     } catch (error) {
       console.error('Failed to load assignment:', error);
 
       // Show specific error message based on error type
       let errorMessage = 'Failed to generate assignment. Please try again.';
-      if (error.message.includes('API key')) {
-        errorMessage = 'Assessment service is not properly configured. Please contact support.';
-      } else if (error.message.includes('network') || error.message.includes('fetch')) {
-        errorMessage = 'Network connection error. Please check your internet connection and try again.';
-      } else if (error.message.includes('rate limit') || error.message.includes('429')) {
-        errorMessage = 'API rate limit reached. Please wait a few minutes and try again.';
-      } else if (error.message.includes('too few questions')) {
-        errorMessage = 'Could not generate enough questions due to API limitations. Please try again in a few minutes.';
+      if (error.message.includes('student')) {
+        errorMessage = 'Could not load student profile. Using default question set.';
+      } else if (error.message.includes('questions')) {
+        errorMessage = 'Could not generate enough questions for your field. Please try again.';
+      } else if (error.message.includes('field')) {
+        errorMessage = 'Could not determine your study field. Using general questions.';
       }
 
       // Use the same toast ID to update the loading toast instead of creating a new one
@@ -307,16 +350,15 @@ export default function Assignment({ onComplete }) {
           </div>
 
           <div className="space-y-2 text-sm text-white/60">
-            <div>🤖 Using advanced AI to create unique questions</div>
-            <div>⏳ This process may take 2-3 minutes due to API rate limits</div>
-            <div>🎯 Generating questions across 7 different categories</div>
+            <div>🎯 Analyzing your study field and background</div>
+            <div>📚 Selecting field-appropriate questions</div>
+            <div>⚡ Fast generation using curated question banks</div>
           </div>
 
           <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
             <div className="text-sm text-blue-300">
-              💡 <strong>Why the wait?</strong> We're generating completely unique questions
-              tailored to your assessment using AI, which requires careful rate limiting
-              to ensure quality results.
+              💡 <strong>Personalized Assessment:</strong> We're selecting questions from our
+              comprehensive question banks that match your study field and academic level.
             </div>
           </div>
         </div>
@@ -331,12 +373,12 @@ export default function Assignment({ onComplete }) {
         <div className="space-y-3">
           <h2 className="text-xl font-semibold text-white">Assignment Generation Failed</h2>
           <p className="text-white/70 text-sm leading-relaxed">
-            We couldn't generate your assignment using our AI system. This could be due to:
+            We couldn't generate your field-based assessment. This could be due to:
           </p>
           <ul className="text-left text-sm text-white/60 space-y-1">
             <li>• Network connectivity issues</li>
-            <li>• AI service temporarily unavailable</li>
-            <li>• API rate limits exceeded</li>
+            <li>• Unable to load student profile</li>
+            <li>• Question bank temporarily unavailable</li>
           </ul>
         </div>
         <div className="space-y-3">

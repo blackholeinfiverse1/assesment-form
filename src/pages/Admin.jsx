@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import FormBuilder from "../components/FormBuilder";
+import QuestionBankManager from "../components/QuestionBankManager";
 import StudentAnalytics from "../components/StudentAnalytics";
 import { adminAuth } from "../config/admin";
 import { FormConfigService } from "../lib/formConfigService";
@@ -485,6 +486,16 @@ export default function Admin() {
             }`}
           >
             Student Analytics
+          </button>
+          <button
+            onClick={() => setActiveTab("question-banks")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "question-banks"
+                ? "border-orange-500 text-orange-400"
+                : "border-transparent text-white/70 hover:text-white"
+            }`}
+          >
+            Question Banks
           </button>
         </div>
       </div>
@@ -1201,6 +1212,13 @@ export default function Admin() {
       {activeTab === "student-analytics" && (
         <div className="card">
           <StudentAnalytics />
+        </div>
+      )}
+
+      {/* Question Banks Tab */}
+      {activeTab === "question-banks" && (
+        <div className="card">
+          <QuestionBankManager />
         </div>
       )}
     </div>

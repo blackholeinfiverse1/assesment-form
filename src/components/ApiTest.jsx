@@ -1,48 +1,112 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { grokService } from '../lib/grokService';
+import { fieldBasedQuestionService } from '../lib/fieldBasedQuestionService';
 import { CheckCircle, XCircle, AlertCircle, Play } from 'lucide-react';
 
 export default function ApiTest() {
   const [testing, setTesting] = useState(false);
   const [testResults, setTestResults] = useState(null);
 
-  const runApiTest = async () => {
+  const runSystemTest = async () => {
     setTesting(true);
     setTestResults(null);
     
     const results = {
-      apiKeyCheck: null,
-      connectivity: null,
+      questionBanks: null,
+      fieldDetection: null,
       questionGeneration: null,
       errors: []
     };
 
     try {
-      // Test 1: API Key validation
-      console.log('🔧 Step 1: Validating API key...');
+      // Test 1: Question bank availability
+      console.log('🔧 Step 1: Checking question bank availability...');
       try {
-        await grokService.validateApiSetup();
-        results.apiKeyCheck = { success: true, message: 'API key is valid and connectivity works' };
+        const summary = await fieldBasedQuestionService.getQuestionBankSummary();
+        const totalQuestions = Object.values(summary).reduce((total, categories) => {
+          return total + Object.values(categories).reduce((sum, count) => sum + count, 0);
+        }, 0);
+        
+        if (totalQuestions > 0) {
+          results.questionBanks = { 
+            success: true, 
+            message: `${totalQuestions} questions available across ${Object.keys(summary).length} categories`
+          };
+        } else {
+          results.questionBanks = { success: false, message: 'No questions found in question banks' };
+          results.errors.push('Question banks are empty');
+        }
       } catch (error) {
-        results.apiKeyCheck = { success: false, message: error.message };
-        results.errors.push(`API Key/Connectivity: ${error.message}`);
+        results.questionBanks = { success: false, message: error.message };
+        results.errors.push(`Question Banks: ${error.message}`);
       }
 
-      // Test 2: Simple question generation
-      if (results.apiKeyCheck?.success) {
-        console.log('🔧 Step 2: Testing question generation...');
+      // Test 2: Field detection
+      if (results.questionBanks?.success) {
+        console.log('🔧 Step 2: Testing field detection...');
         try {
-          const testQuestions = await grokService.generateQuestions('Coding', 'medium', 1);
-          if (testQuestions && testQuestions.length > 0) {
-            results.questionGeneration = { 
+          const testStudentData = {
+            field_of_study: 'Computer Science',
+            current_skills: 'JavaScript, Python',
+            interests: 'Web development, AI',
+            goals: 'Become a software engineer'
+          };
+          
+          const questions = await fieldBasedQuestionService.generateQuestionsForStudent(testStudentData, 5);
+          
+          if (questions && questions.length > 0) {
+            results.fieldDetection = { 
               success: true, 
-              message: `Successfully generated ${testQuestions.length} question(s)`,
-              sample: testQuestions[0]?.question_text?.substring(0, 100) + '...'
+              message: `Generated ${questions.length} field-appropriate questions`,
+              sample: questions[0]?.question_text?.substring(0, 100) + '...'
             };
           } else {
-            results.questionGeneration = { success: false, message: 'No questions generated' };
-            results.errors.push('Question generation returned empty result');
+            results.fieldDetection = { success: false, message: 'No questions generated for test profile' };
+            results.errors.push('Field-based question generation failed');
+          }
+        } catch (error) {
+          results.fieldDetection = { success: false, message: error.message };
+          results.errors.push(`Field Detection: ${error.message}`);
+        }
+      }
+
+      // Test 3: Question generation for different fields
+      if (results.fieldDetection?.success) {
+        console.log('🔧 Step 3: Testing question generation for different fields...');
+        try {
+          const testFields = [
+            { field_of_study: 'Business Administration' },
+            { field_of_study: 'Psychology' },
+            { field_of_study: 'Medicine' }
+          ];
+          
+          let allFieldsWork = true;
+          const fieldResults = [];
+          
+          for (const testData of testFields) {
+            try {
+              const questions = await fieldBasedQuestionService.generateQuestionsForStudent(testData, 3);
+              fieldResults.push({ field: testData.field_of_study, count: questions.length });
+              if (questions.length === 0) allFieldsWork = false;
+            } catch (error) {
+              fieldResults.push({ field: testData.field_of_study, error: error.message });
+              allFieldsWork = false;
+            }
+          }
+          
+          if (allFieldsWork) {
+            results.questionGeneration = { 
+              success: true, 
+              message: `All test fields generated questions successfully`,
+              details: fieldResults
+            };
+          } else {
+            results.questionGeneration = { 
+              success: false, 
+              message: 'Some fields failed to generate questions',
+              details: fieldResults
+            };
+            results.errors.push('Question generation inconsistent across fields');
           }
         } catch (error) {
           results.questionGeneration = { success: false, message: error.message };
@@ -53,7 +117,7 @@ export default function ApiTest() {
       setTestResults(results);
       
       if (results.errors.length === 0) {
-        toast.success('All API tests passed! 🎉');
+        toast.success('All system tests passed! 🎉');
       } else {
         toast.error(`${results.errors.length} test(s) failed`);
       }
@@ -62,8 +126,8 @@ export default function ApiTest() {
       console.error('Test suite failed:', error);
       toast.error('Test suite failed: ' + error.message);
       setTestResults({
-        apiKeyCheck: { success: false, message: 'Test suite failed' },
-        connectivity: null,
+        questionBanks: { success: false, message: 'Test suite failed' },
+        fieldDetection: null,
         questionGeneration: null,
         errors: [error.message]
       });
@@ -100,25 +164,25 @@ export default function ApiTest() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="text-center space-y-4">
-        <h2 className="text-2xl font-bold text-white">Groq API Test Suite</h2>
+        <h2 className="text-2xl font-bold text-white">Field-Based Assessment Test Suite</h2>
         <p className="text-white/70">
-          Test the Groq API integration to diagnose any issues with question generation
+          Test the field-based question system to ensure all components are working correctly
         </p>
         
         <button
-          onClick={runApiTest}
+          onClick={runSystemTest}
           disabled={testing}
           className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
         >
           <Play className="h-4 w-4" />
-          {testing ? 'Running Tests...' : 'Run API Tests'}
+          {testing ? 'Running Tests...' : 'Run System Tests'}
         </button>
       </div>
 
       {testing && (
         <div className="text-center space-y-3">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-          <div className="text-white/70">Testing API connectivity and functionality...</div>
+          <div className="text-white/70">Testing field-based question system...</div>
         </div>
       )}
 
@@ -127,13 +191,19 @@ export default function ApiTest() {
           <h3 className="text-lg font-semibold text-white">Test Results</h3>
           
           <TestResult
-            title="API Key & Connectivity"
-            result={testResults.apiKeyCheck}
-            icon={testResults.apiKeyCheck?.success ? CheckCircle : XCircle}
+            title="Question Bank Availability"
+            result={testResults.questionBanks}
+            icon={testResults.questionBanks?.success ? CheckCircle : XCircle}
           />
           
           <TestResult
-            title="Question Generation"
+            title="Field Detection & Question Selection"
+            result={testResults.fieldDetection}
+            icon={testResults.fieldDetection?.success ? CheckCircle : XCircle}
+          />
+          
+          <TestResult
+            title="Multi-Field Question Generation"
             result={testResults.questionGeneration}
             icon={testResults.questionGeneration?.success ? CheckCircle : XCircle}
           />
@@ -153,12 +223,12 @@ export default function ApiTest() {
           )}
           
           <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-            <div className="text-sm font-medium text-white/90 mb-2">Debugging Tips:</div>
+            <div className="text-sm font-medium text-white/90 mb-2">System Status:</div>
             <ul className="text-xs text-white/70 space-y-1">
-              <li>• Check browser console for detailed API request/response logs</li>
-              <li>• Verify your Groq API key is valid and has sufficient credits</li>
-              <li>• Ensure you're using a supported model (llama3-8b-8192)</li>
-              <li>• Check if your API key has the correct permissions</li>
+              <li>• Field-based question system active</li>
+              <li>• No external API dependencies</li>
+              <li>• Instant question generation</li>
+              <li>• Check browser console for detailed logs</li>
             </ul>
           </div>
         </div>

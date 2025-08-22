@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { grokService } from '../lib/grokService';
 import { scoringService } from '../lib/scoringService';
 import { Play, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
@@ -15,28 +14,40 @@ export default function EvaluationTest() {
     question_text: 'What is the time complexity of binary search in a sorted array?',
     options: ['A) O(n)', 'B) O(log n)', 'C) O(n log n)', 'D) O(1)'],
     correct_answer: 'B) O(log n)',
-    explanation: 'Binary search divides the search space in half with each comparison.'
+    explanation: 'Binary search divides the search space in half with each comparison, resulting in logarithmic time complexity.',
+    vedic_connection: '',
+    modern_application: 'Binary search is fundamental in computer science and used in databases, search engines, and optimization algorithms.'
   };
 
   const testCases = [
     {
-      name: 'Correct Answer with Good Explanation',
+      name: 'Correct Answer with Excellent Explanation',
       userAnswer: 'B) O(log n)',
-      userExplanation: 'Binary search works by repeatedly dividing the search space in half, which gives us logarithmic time complexity.'
+      userExplanation: 'Binary search works by repeatedly dividing the search space in half. Since we eliminate half of the remaining elements with each comparison, the maximum number of comparisons needed is log base 2 of n, therefore the time complexity is O(log n).'
     },
     {
-      name: 'Correct Answer with Poor Explanation',
+      name: 'Correct Answer with Basic Explanation',
       userAnswer: 'B) O(log n)',
-      userExplanation: 'I think it is log n.'
+      userExplanation: 'Binary search divides the array in half each time, so it is log n.'
     },
     {
-      name: 'Wrong Answer with Good Explanation',
+      name: 'Correct Answer with Minimal Explanation',
+      userAnswer: 'B) O(log n)',
+      userExplanation: 'It is log n because of halving.'
+    },
+    {
+      name: 'Wrong Answer with Good Reasoning',
       userAnswer: 'A) O(n)',
-      userExplanation: 'I believe we need to check each element in the worst case, so it should be linear time.'
+      userExplanation: 'I believe we need to check each element in the worst case to find the target, therefore it should be linear time complexity O(n).'
+    },
+    {
+      name: 'Wrong Answer with Poor Explanation',
+      userAnswer: 'D) O(1)',
+      userExplanation: 'I think it is constant time.'
     },
     {
       name: 'Wrong Answer with No Explanation',
-      userAnswer: 'D) O(1)',
+      userAnswer: 'C) O(n log n)',
       userExplanation: ''
     }
   ];
@@ -46,55 +57,30 @@ export default function EvaluationTest() {
     setTestResults(null);
     
     const results = {
-      grokApiTest: null,
       scoringServiceTest: null,
       testCaseResults: [],
+      performanceTest: null,
       errors: []
     };
 
     try {
-      toast.loading('Testing evaluation pipeline...');
+      toast.loading('Testing field-based evaluation system...');
 
-      // Test 1: Direct Grok API evaluation
-      console.log('\n🧪 === Testing Direct Grok API Evaluation ===');
+      // Test 1: Basic Scoring Service functionality
+      console.log('\n🧪 === Testing Field-Based Scoring Service ===');
       try {
-        const directEvaluation = await grokService.evaluateResponse(
+        const basicEvaluation = await scoringService.evaluateResponse(
           sampleQuestion,
           'B) O(log n)',
-          'Binary search divides the array in half each time.'
-        );
-        
-        results.grokApiTest = {
-          success: true,
-          data: directEvaluation,
-          message: 'Grok API evaluation successful'
-        };
-        console.log('✅ Direct Grok API test passed');
-      } catch (error) {
-        results.grokApiTest = {
-          success: false,
-          error: error.message,
-          message: 'Grok API evaluation failed'
-        };
-        results.errors.push(`Grok API: ${error.message}`);
-        console.error('❌ Direct Grok API test failed:', error);
-      }
-
-      // Test 2: Scoring Service evaluation
-      console.log('\n🧪 === Testing Scoring Service ===');
-      try {
-        const scoringEvaluation = await scoringService.evaluateResponse(
-          sampleQuestion,
-          'B) O(log n)',
-          'Binary search divides the array in half each time.'
+          'Binary search divides the array in half each time, leading to logarithmic complexity.'
         );
         
         results.scoringServiceTest = {
           success: true,
-          data: scoringEvaluation,
-          message: 'Scoring service evaluation successful'
+          data: basicEvaluation,
+          message: 'Field-based scoring service working correctly'
         };
-        console.log('✅ Scoring service test passed');
+        console.log('✅ Basic scoring service test passed');
       } catch (error) {
         results.scoringServiceTest = {
           success: false,
@@ -102,11 +88,11 @@ export default function EvaluationTest() {
           message: 'Scoring service evaluation failed'
         };
         results.errors.push(`Scoring Service: ${error.message}`);
-        console.error('❌ Scoring service test failed:', error);
+        console.error('❌ Basic scoring service test failed:', error);
       }
 
-      // Test 3: Multiple test cases
-      console.log('\n🧪 === Testing Multiple Scenarios ===');
+      // Test 2: Multiple test cases with different scenarios
+      console.log('\n🧪 === Testing Multiple Evaluation Scenarios ===');
       for (let i = 0; i < testCases.length; i++) {
         const testCase = testCases[i];
         console.log(`\n📝 Testing: ${testCase.name}`);
@@ -123,13 +109,10 @@ export default function EvaluationTest() {
             success: true,
             input: testCase,
             output: result,
-            message: `Scores: ${result.accuracy_score}/${result.explanation_score}/${result.reasoning_score}`
+            message: `Accuracy: ${result.accuracy_score}/10, Explanation: ${result.explanation_score}/10, Reasoning: ${result.reasoning_score}/10`
           });
           
           console.log(`✅ ${testCase.name} completed`);
-          
-          // Add delay between test cases
-          await new Promise(resolve => setTimeout(resolve, 2000));
           
         } catch (error) {
           results.testCaseResults.push({
@@ -143,6 +126,42 @@ export default function EvaluationTest() {
           results.errors.push(`${testCase.name}: ${error.message}`);
           console.error(`❌ ${testCase.name} failed:`, error);
         }
+      }
+
+      // Test 3: Performance test
+      console.log('\n🧪 === Testing Performance ===');
+      try {
+        const startTime = Date.now();
+        
+        // Run 5 evaluations simultaneously to test performance
+        const performancePromises = Array(5).fill(null).map(() => 
+          scoringService.evaluateResponse(
+            sampleQuestion,
+            'B) O(log n)',
+            'Binary search has logarithmic time complexity.'
+          )
+        );
+        
+        await Promise.all(performancePromises);
+        const endTime = Date.now();
+        const totalTime = endTime - startTime;
+        
+        results.performanceTest = {
+          success: true,
+          message: `5 evaluations completed in ${totalTime}ms (avg: ${Math.round(totalTime/5)}ms per evaluation)`,
+          totalTime,
+          averageTime: Math.round(totalTime/5)
+        };
+        
+        console.log('✅ Performance test passed');
+      } catch (error) {
+        results.performanceTest = {
+          success: false,
+          error: error.message,
+          message: 'Performance test failed'
+        };
+        results.errors.push(`Performance: ${error.message}`);
+        console.error('❌ Performance test failed:', error);
       }
 
       setTestResults(results);
@@ -194,9 +213,9 @@ export default function EvaluationTest() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="text-center space-y-4">
-        <h2 className="text-2xl font-bold text-white">Evaluation Pipeline Test</h2>
+        <h2 className="text-2xl font-bold text-white">Field-Based Evaluation Test</h2>
         <p className="text-white/70">
-          Test the complete evaluation pipeline from Grok API to scoring service
+          Test the field-based scoring system to ensure accurate and fast evaluation
         </p>
         
         <button
@@ -223,15 +242,15 @@ export default function EvaluationTest() {
           
           <div className="grid gap-4 md:grid-cols-2">
             <TestResult
-              title="Grok API Direct Test"
-              result={testResults.grokApiTest}
-              icon={testResults.grokApiTest?.success ? CheckCircle : XCircle}
+              title="Field-Based Scoring Service"
+              result={testResults.scoringServiceTest}
+              icon={testResults.scoringServiceTest?.success ? CheckCircle : XCircle}
             />
             
             <TestResult
-              title="Scoring Service Test"
-              result={testResults.scoringServiceTest}
-              icon={testResults.scoringServiceTest?.success ? CheckCircle : XCircle}
+              title="Performance Test"
+              result={testResults.performanceTest}
+              icon={testResults.performanceTest?.success ? CheckCircle : XCircle}
             />
           </div>
           

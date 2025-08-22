@@ -1,11 +1,11 @@
-// AI-powered scoring service for assignment evaluation
+// Field-based scoring service for assignment evaluation (replaces AI evaluation)
 
 import { ASSIGNMENT_CATEGORIES, SCORING_CRITERIA } from '../data/assignment.js';
-import { grokService } from './grokService.js';
+import { fieldBasedQuestionService } from './fieldBasedQuestionService.js';
 
 class ScoringService {
   constructor() {
-    this.grokService = grokService;
+    this.fieldBasedQuestionService = fieldBasedQuestionService;
   }
 
   async evaluateAssignmentAttempt(attempt, userContext = null) {
@@ -105,26 +105,89 @@ class ScoringService {
     console.log(`🔍 ScoringService: Starting evaluation for question ${question.id}`);
 
     try {
-      // Get AI evaluation from Grok
-      console.log(`🤖 Calling Grok API for evaluation...`);
-      const aiEvaluation = await this.grokService.evaluateResponse(
-        question,
-        userAnswer,
-        userExplanation
-      );
-
-      console.log(`✅ Received AI evaluation:`, aiEvaluation);
+      // Direct evaluation using predefined correct answers (no AI needed)
+      console.log(`✅ Evaluating using hardcoded correct answer...`);
+      
+      const isCorrect = userAnswer === question.correct_answer;
+      const hasExplanation = userExplanation && userExplanation.trim().length > 0;
+      const explanationLength = userExplanation ? userExplanation.trim().length : 0;
+      
+      // Enhanced scoring logic for hardcoded questions
+      let accuracyScore = 0;
+      let explanationScore = 0;
+      let reasoningScore = 0;
+      
+      // Accuracy scoring (0-10)
+      if (isCorrect) {
+        accuracyScore = 10;
+      } else {
+        // Partial credit for multiple choice questions based on option analysis
+        accuracyScore = 0;
+      }
+      
+      // Explanation quality scoring (0-10)
+      if (hasExplanation) {
+        // Base score for providing an explanation
+        explanationScore = 3;
+        
+        // Additional points based on explanation length and content
+        if (explanationLength >= 20) explanationScore += 2;
+        if (explanationLength >= 50) explanationScore += 2;
+        if (explanationLength >= 100) explanationScore += 2;
+        
+        // Bonus for keyword matching (simple heuristic)
+        const explanation = userExplanation.toLowerCase();
+        const questionText = question.question_text.toLowerCase();
+        const correctAnswer = question.correct_answer.toLowerCase();
+        
+        // Check for relevant keywords
+        const relevantKeywords = this.extractKeywords(questionText + ' ' + correctAnswer);
+        const matchedKeywords = relevantKeywords.filter(keyword => 
+          explanation.includes(keyword.toLowerCase())
+        ).length;
+        
+        if (matchedKeywords > 0) explanationScore += Math.min(1, matchedKeywords * 0.5);
+        
+        explanationScore = Math.min(10, explanationScore);
+      }
+      
+      // Reasoning clarity scoring (0-10)
+      if (hasExplanation) {
+        reasoningScore = 2; // Base score for attempting reasoning
+        
+        // Points for structured thinking indicators
+        const explanation = userExplanation.toLowerCase();
+        const reasoningIndicators = [
+          'because', 'therefore', 'since', 'due to', 'as a result',
+          'first', 'second', 'finally', 'however', 'moreover',
+          'for example', 'such as', 'in conclusion'
+        ];
+        
+        const indicatorCount = reasoningIndicators.filter(indicator => 
+          explanation.includes(indicator)
+        ).length;
+        
+        reasoningScore += Math.min(4, indicatorCount * 1);
+        
+        // Bonus for correct reasoning even if answer is wrong
+        if (!isCorrect && explanation.includes(question.explanation.toLowerCase().substring(0, 20))) {
+          reasoningScore += 2;
+        }
+        
+        // Bonus for correct answer with good reasoning
+        if (isCorrect && explanationLength > 30) {
+          reasoningScore += 2;
+        }
+        
+        reasoningScore = Math.min(10, reasoningScore);
+      }
+      
+      console.log(`🧮 Calculated scores:`);
+      console.log(`- Accuracy: ${accuracyScore}/10`);
+      console.log(`- Explanation: ${explanationScore}/10`);
+      console.log(`- Reasoning: ${reasoningScore}/10`);
 
       // Calculate weighted total score
-      const accuracyScore = aiEvaluation.accuracy_score || 0;
-      const explanationScore = aiEvaluation.explanation_score || 0;
-      const reasoningScore = aiEvaluation.reasoning_score || 0;
-
-      console.log(`🧮 Calculating weighted scores:`);
-      console.log(`- Accuracy: ${accuracyScore} × ${SCORING_CRITERIA.ACCURACY_WEIGHT} = ${accuracyScore * SCORING_CRITERIA.ACCURACY_WEIGHT}`);
-      console.log(`- Explanation: ${explanationScore} × ${SCORING_CRITERIA.EXPLANATION_QUALITY_WEIGHT} = ${explanationScore * SCORING_CRITERIA.EXPLANATION_QUALITY_WEIGHT}`);
-      console.log(`- Reasoning: ${reasoningScore} × ${SCORING_CRITERIA.REASONING_CLARITY_WEIGHT} = ${reasoningScore * SCORING_CRITERIA.REASONING_CLARITY_WEIGHT}`);
-
       const totalScore = (
         accuracyScore * SCORING_CRITERIA.ACCURACY_WEIGHT +
         explanationScore * SCORING_CRITERIA.EXPLANATION_QUALITY_WEIGHT +
@@ -133,6 +196,10 @@ class ScoringService {
 
       console.log(`📊 Total weighted score: ${totalScore}`);
 
+      // Generate feedback based on performance
+      const feedback = this.generateFeedback(isCorrect, explanationScore, reasoningScore, question);
+      const suggestions = this.generateSuggestions(isCorrect, explanationScore, reasoningScore, question);
+
       const evaluationResult = {
         question_id: question.id,
         question_category: question.category,
@@ -140,116 +207,156 @@ class ScoringService {
         user_answer: userAnswer,
         user_explanation: userExplanation,
         correct_answer: question.correct_answer,
-        is_correct: userAnswer === question.correct_answer,
+        is_correct: isCorrect,
         accuracy_score: accuracyScore,
         explanation_score: explanationScore,
         reasoning_score: reasoningScore,
         total_score: Math.round(totalScore * 100) / 100,
         max_score: SCORING_CRITERIA.MAX_SCORE_PER_QUESTION,
-        ai_feedback: aiEvaluation.feedback || 'No feedback available',
-        suggestions: aiEvaluation.suggestions || 'Keep practicing to improve',
+        ai_feedback: feedback,
+        suggestions: suggestions,
         evaluated_at: new Date().toISOString()
       };
 
       console.log(`✅ Final evaluation result:`, evaluationResult);
+      
+      // Update question usage statistics
+      try {
+        await this.fieldBasedQuestionService.updateQuestionStats(
+          question.id, 
+          isCorrect, 
+          180 // default time, could be passed as parameter
+        );
+      } catch (statsError) {
+        console.warn('Could not update question statistics:', statsError);
+      }
+      
       return evaluationResult;
 
     } catch (error) {
       console.error('💥 ScoringService evaluation error:', error);
-      console.error('💥 Error stack:', error.stack);
+      throw new Error(`Failed to evaluate response for question ${question.id}: ${error.message}`);
+    }
+  }
 
-      // For debugging purposes, let's provide a fallback evaluation
-      console.log('🔄 Attempting fallback evaluation...');
-      try {
-        const fallbackEvaluation = this.createFallbackEvaluation(question, userAnswer, userExplanation);
-        console.log('✅ Fallback evaluation created:', fallbackEvaluation);
-        return fallbackEvaluation;
-      } catch (fallbackError) {
-        console.error('💥 Fallback evaluation also failed:', fallbackError);
-        throw new Error(`Failed to evaluate response for question ${question.id}: ${error.message}`);
+  extractKeywords(text) {
+    // Simple keyword extraction for scoring
+    const commonWords = ['the', 'is', 'at', 'which', 'on', 'and', 'or', 'but', 'in', 'with', 'to', 'for', 'of', 'as', 'by'];
+    const words = text.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 3 && !commonWords.includes(word));
+    
+    return [...new Set(words)]; // Remove duplicates
+  }
+
+  generateFeedback(isCorrect, explanationScore, reasoningScore) {
+    if (isCorrect) {
+      if (explanationScore >= 7 && reasoningScore >= 7) {
+        return "Excellent work! You got the correct answer and provided a well-reasoned explanation.";
+      } else if (explanationScore >= 5) {
+        return "Good job on getting the correct answer! Consider providing more detailed reasoning to strengthen your response.";
+      } else {
+        return "Correct answer, but try to explain your thinking process to demonstrate understanding.";
+      }
+    } else {
+      if (explanationScore >= 5) {
+        return "While your answer was incorrect, you showed good effort in explaining your reasoning. Review the correct answer and explanation to understand where to improve.";
+      } else {
+        return "The answer was incorrect. Review the explanation to understand the correct reasoning and try to provide more detailed explanations in future responses.";
       }
     }
   }
 
-  createFallbackEvaluation(question, userAnswer, userExplanation) {
-    console.log('🔄 Creating fallback evaluation...');
-
-    const isCorrect = userAnswer === question.correct_answer;
-    const hasExplanation = userExplanation && userExplanation.trim().length > 0;
-    const explanationLength = userExplanation ? userExplanation.trim().length : 0;
-
-    // Simple scoring logic
-    const accuracyScore = isCorrect ? 10 : 0;
-    const explanationScore = hasExplanation ? Math.min(8, Math.max(3, explanationLength / 10)) : 0;
-    const reasoningScore = hasExplanation ? Math.min(7, Math.max(2, explanationLength / 15)) : 0;
-
-    const totalScore = (
-      accuracyScore * SCORING_CRITERIA.ACCURACY_WEIGHT +
-      explanationScore * SCORING_CRITERIA.EXPLANATION_QUALITY_WEIGHT +
-      reasoningScore * SCORING_CRITERIA.REASONING_CLARITY_WEIGHT
-    );
-
-    return {
-      question_id: question.id,
-      question_category: question.category,
-      question_difficulty: question.difficulty,
-      user_answer: userAnswer,
-      user_explanation: userExplanation,
-      correct_answer: question.correct_answer,
-      is_correct: isCorrect,
-      accuracy_score: accuracyScore,
-      explanation_score: explanationScore,
-      reasoning_score: reasoningScore,
-      total_score: Math.round(totalScore * 100) / 100,
-      max_score: SCORING_CRITERIA.MAX_SCORE_PER_QUESTION,
-      ai_feedback: isCorrect
-        ? 'Correct answer! ' + (question.explanation || 'Well done.')
-        : `Incorrect. The correct answer is ${question.correct_answer}. ${question.explanation || ''}`,
-      suggestions: isCorrect
-        ? 'Great work! Continue practicing similar questions.'
-        : 'Review the topic and practice similar questions to improve understanding.',
-      evaluated_at: new Date().toISOString(),
-      fallback_used: true
-    };
+  generateSuggestions(isCorrect, explanationScore, reasoningScore, question) {
+    const suggestions = [];
+    
+    if (!isCorrect) {
+      suggestions.push("Review the correct answer and explanation carefully.");
+      suggestions.push(`Focus on understanding ${question.category} concepts better.`);
+    }
+    
+    if (explanationScore < 5) {
+      suggestions.push("Provide more detailed explanations for your answers.");
+      suggestions.push("Try to explain your thought process step by step.");
+    }
+    
+    if (reasoningScore < 5) {
+      suggestions.push("Use logical connectors like 'because', 'therefore', 'since' to show your reasoning.");
+      suggestions.push("Break down complex problems into smaller steps.");
+    }
+    
+    if (question.vedic_connection) {
+      suggestions.push("Explore the Vedic connections to deepen your understanding.");
+    }
+    
+    if (question.modern_application) {
+      suggestions.push("Consider how this knowledge applies in modern contexts.");
+    }
+    
+    return suggestions.length > 0 ? suggestions.join(' ') : 'Keep practicing to improve your skills!';
   }
 
   async generateOverallFeedback(evaluatedResponses, categoryScores, overallPercentage, userContext = null) {
     try {
-      const categoryPerformance = Object.entries(categoryScores)
-        .map(([category, data]) => `${category}: ${data.percentage.toFixed(1)}%`)
-        .join(', ');
-
-      const userInfo = userContext ? `Student: ${userContext.name || 'Student'}` : 'Student Assessment';
-
-      const prompt = `Generate personalized constructive feedback for ${userInfo} who completed a multidisciplinary assessment.
-
-Overall Score: ${overallPercentage.toFixed(1)}%
-Category Performance: ${categoryPerformance}
-Total Questions: ${evaluatedResponses.length}
-Correct Answers: ${evaluatedResponses.filter(r => r.is_correct).length}
-
-Provide encouraging, specific feedback that:
-1. Acknowledges their effort and performance${userContext?.name ? ` (address them by name: ${userContext.name})` : ''}
-2. Highlights their strongest areas
-3. Identifies areas for improvement
-4. Gives actionable next steps
-5. Connects their performance to real-world applications
-
-Keep the tone positive and motivating while being honest about areas needing work. Make the feedback personal and encouraging.`;
-
-      const messages = [
-        {
-          role: 'system',
-          content: 'You are an encouraging educational mentor providing constructive feedback to help students grow and improve.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ];
-
-      const feedback = await this.grokService.makeApiCall(messages, 800);
-      return feedback || this.getFallbackOverallFeedback(overallPercentage);
+      // Generate feedback without AI - use rule-based approach
+      const totalQuestions = evaluatedResponses.length;
+      const correctAnswers = evaluatedResponses.filter(r => r.is_correct).length;
+      const accuracyRate = (correctAnswers / totalQuestions) * 100;
+      
+      // Analyze category performance
+      const strongCategories = Object.entries(categoryScores)
+        .filter(([, data]) => data.percentage >= 80)
+        .map(([category]) => category);
+      
+      const weakCategories = Object.entries(categoryScores)
+        .filter(([, data]) => data.percentage < 60)
+        .map(([category]) => category);
+      
+      const userName = userContext?.name || 'Student';
+      
+      let feedback = `Hello ${userName}! `;
+      
+      // Performance overview
+      if (overallPercentage >= 90) {
+        feedback += "Outstanding performance! You've demonstrated excellent knowledge across multiple disciplines. ";
+      } else if (overallPercentage >= 80) {
+        feedback += "Great work! You've shown strong understanding in most areas. ";
+      } else if (overallPercentage >= 70) {
+        feedback += "Good effort! You've grasped many important concepts. ";
+      } else if (overallPercentage >= 60) {
+        feedback += "You're making progress! There are areas where you can improve. ";
+      } else {
+        feedback += "Keep working hard! This assessment shows opportunities for growth. ";
+      }
+      
+      // Highlight strengths
+      if (strongCategories.length > 0) {
+        feedback += `You performed particularly well in ${strongCategories.join(', ')}. `;
+      }
+      
+      // Address improvement areas
+      if (weakCategories.length > 0) {
+        feedback += `Focus on strengthening your knowledge in ${weakCategories.join(', ')}. `;
+      }
+      
+      // Explanation quality feedback
+      const avgExplanationScore = evaluatedResponses.reduce((sum, r) => sum + r.explanation_score, 0) / totalQuestions;
+      if (avgExplanationScore < 5) {
+        feedback += "Try to provide more detailed explanations for your answers to demonstrate your thinking process. ";
+      } else if (avgExplanationScore >= 7) {
+        feedback += "Your explanations show good reasoning skills! ";
+      }
+      
+      // Motivational conclusion
+      if (overallPercentage >= 80) {
+        feedback += "Continue this excellent work and consider exploring advanced topics in your strongest areas.";
+      } else {
+        feedback += "Use this assessment as a learning opportunity and practice regularly to build your skills.";
+      }
+      
+      return feedback;
+      
     } catch (error) {
       console.error('Error generating overall feedback:', error);
       return this.getFallbackOverallFeedback(overallPercentage);
@@ -280,7 +387,7 @@ Keep the tone positive and motivating while being honest about areas needing wor
 
   identifyStrengths(categoryScores) {
     return Object.entries(categoryScores)
-      .filter(([_, data]) => data.percentage >= 80)
+      .filter(([, data]) => data.percentage >= 80)
       .map(([category, data]) => ({
         category,
         percentage: data.percentage,
@@ -291,7 +398,7 @@ Keep the tone positive and motivating while being honest about areas needing wor
 
   identifyImprovementAreas(categoryScores) {
     return Object.entries(categoryScores)
-      .filter(([_, data]) => data.percentage < 70)
+      .filter(([, data]) => data.percentage < 70)
       .map(([category, data]) => ({
         category,
         percentage: data.percentage,
