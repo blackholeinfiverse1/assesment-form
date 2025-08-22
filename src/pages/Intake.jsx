@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useUser } from "@clerk/clerk-react";
 import { supabase, SUPABASE_TABLE } from "../lib/supabaseClient";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import DynamicForm from "../components/DynamicForm";
 import { FormConfigService } from "../lib/formConfigService";
 import { backgroundSelectionService } from "../lib/backgroundSelectionService";
@@ -315,15 +315,17 @@ function Intake() {
 
       setSuccess(
         isEditing
-          ? "Profile updated successfully!"
+          ? "Profile updated successfully! Your changes have been saved."
           : "Welcome to Gurukul! Redirecting you to your assessment..."
       );
       setIsEditing(true);
 
-      // Always redirect to assignment page after completion
-      setTimeout(() => {
-        navigate("/assignment");
-      }, 1500);
+      // Only redirect to assignment for new students, not for profile updates
+      if (!isEditing) {
+        setTimeout(() => {
+          navigate("/assignment");
+        }, 1500);
+      }
     } catch (err) {
       setError(err?.message || "Failed to submit");
     } finally {
@@ -354,14 +356,26 @@ function Intake() {
   return (
     <div className="text-white">
       <div className="mb-6">
-        <h2 className="text-xl font-semibold">
-          {isEditing ? "Edit Profile" : "Student Intake"}
-        </h2>
-        <p className="text-white/70 text-sm">
-          {isEditing
-            ? "Update your profile information below."
-            : "Tell us about yourself so we can assess your Seed → Tree → Sky tier."}
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">
+              {isEditing ? "Edit Profile" : "Student Intake"}
+            </h2>
+            <p className="text-white/70 text-sm">
+              {isEditing
+                ? "Update your profile information below. Changes will be saved automatically."
+                : "Tell us about yourself so we can assess your Seed → Tree → Sky tier."}
+            </p>
+          </div>
+          {isEditing && (
+            <Link
+              to="/dashboard"
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/30 rounded-lg text-white text-sm font-medium transition-all duration-200 flex items-center gap-2"
+            >
+              ← Back to Dashboard
+            </Link>
+          )}
+        </div>
       </div>
 
       {error && (

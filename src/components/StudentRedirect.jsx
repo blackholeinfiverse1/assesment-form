@@ -81,12 +81,9 @@ export default function StudentRedirect({ children }) {
           return;
         }
 
-        // If user completed intake and is on intake page, redirect to assignment
-        if (currentPath === "/intake" && hasIntakeData) {
-          console.log("➡️ Student has completed intake, redirecting to assignment");
-          navigate("/assignment", { replace: true });
-          return;
-        }
+        // Allow users to access intake page for editing their profile
+        // No longer automatically redirect to assignment if they have intake data
+        // This allows profile editing functionality
 
       } catch (err) {
         console.error("❌ Error in student redirect check:", err);

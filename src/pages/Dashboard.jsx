@@ -382,6 +382,22 @@ export default function Dashboard() {
                             </div>
                             <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white/80" />
                           </Link>
+                          <Link to="/intake" className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-400/30 hover:from-purple-500/30 transition-all group">
+                            <Users className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" />
+                            <div className="flex-1 text-left">
+                              <div className="text-sm font-medium text-white flex items-center gap-2">
+                                Edit Profile & Details
+                                <span className="text-xs bg-purple-500/30 px-2 py-1 rounded-full">Update Info</span>
+                              </div>
+                              <div className="text-xs text-purple-200/80 mt-1">
+                                Update your personal information, skills, interests, and educational background
+                              </div>
+                              <div className="text-xs text-purple-300/60 mt-1">
+                                ✏️ Modify intake responses • 🎯 Update learning goals • 📊 Refine assessment matching
+                              </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-white/40 group-hover:text-white/80" />
+                          </Link>
                           <Link to="/learn" className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30 hover:from-blue-500/30 transition-all group">
                             <BookOpen className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" />
                             <div className="flex-1 text-left">
