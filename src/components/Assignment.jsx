@@ -148,7 +148,7 @@ function ProgressIndicator({ currentQuestion, totalQuestions, answeredQuestions 
   );
 }
 
-export default function Assignment({ onComplete }) {
+export default function Assignment({ onComplete, userId = null, userEmail = null }) {
   const [assignment, setAssignment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -205,11 +205,21 @@ export default function Assignment({ onComplete }) {
       
       let studentData = {};
       try {
-        const { data: students, error: studentError } = await supabase
+        let studentQuery = supabase
           .from(SUPABASE_TABLE)
           .select('*')
-          .order('created_at', { ascending: false })
           .limit(1);
+
+        // Prefer fetching by userId then email
+        if (userId) {
+          studentQuery = studentQuery.eq('user_id', userId);
+        } else if (userEmail) {
+          studentQuery = studentQuery.eq('email', userEmail);
+        } else {
+          studentQuery = studentQuery.order('created_at', { ascending: false });
+        }
+
+        const { data: students, error: studentError } = await studentQuery;
 
         if (!studentError && students && students.length > 0) {
           studentData = students[0];

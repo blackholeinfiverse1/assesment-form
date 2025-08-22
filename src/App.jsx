@@ -8,7 +8,7 @@ import Admin from "./pages/Admin";
 import { SignInPage, SignUpPage } from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import StudentRedirect from "./components/StudentRedirect";
-import IntakeWithBackground from "./pages/Intake";
+import Intake from "./pages/Intake";
 import Assignment from "./pages/Assignment";
 
 export default function App() {
@@ -32,7 +32,7 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <StudentRedirect>
-                  <IntakeWithBackground />
+                  <Intake />
                 </StudentRedirect>
               </ProtectedRoute>
             }

@@ -108,9 +108,9 @@ const RadioField = ({ field, value, onChange, error }) => (
 );
 
 const CheckboxField = ({ field, value, onChange, error }) => {
-  // Handle both checkbox and multi-select field types with checkbox UI
-  const isMultiSelect = field.type === FIELD_TYPES.MULTI_SELECT;
-  
+  // When rendering radio fields with checkbox UI, enforce single selection
+  const isSingle = field.type === FIELD_TYPES.RADIO;
+
   return (
     <div>
       <label className="label">
@@ -120,9 +120,10 @@ const CheckboxField = ({ field, value, onChange, error }) => {
       {field.helpText && <div className="help">{field.helpText}</div>}
       <div className="space-y-3 pl-4">
         {field.options?.map((option) => {
-          const isChecked = Array.isArray(value)
-            ? value.includes(option.value)
-            : false;
+          const isChecked = isSingle
+            ? value === option.value
+            : Array.isArray(value) && value.includes(option.value);
+
           return (
             <label
               key={option.value}
@@ -138,12 +139,16 @@ const CheckboxField = ({ field, value, onChange, error }) => {
                 value={option.value}
                 checked={isChecked}
                 onChange={(e) => {
-                  const currentValues = Array.isArray(value) ? value : [];
-                  const newValues = e.target.checked
-                    ? [...currentValues, option.value]
-                    : currentValues.filter((v) => v !== option.value);
-                  
-                  onChange({ target: { name: field.id, value: newValues } });
+                  if (isSingle) {
+                    const newValue = e.target.checked ? option.value : "";
+                    onChange({ target: { name: field.id, value: newValue } });
+                  } else {
+                    const currentValues = Array.isArray(value) ? value : [];
+                    const newValues = e.target.checked
+                      ? [...currentValues, option.value]
+                      : currentValues.filter((v) => v !== option.value);
+                    onChange({ target: { name: field.id, value: newValues } });
+                  }
                 }}
                 className="absolute opacity-0 w-0 h-0"
               />
@@ -236,7 +241,9 @@ export default function DynamicForm({
 
     if (
       field.required &&
-      (!value || (typeof value === "string" && value.trim() === ""))
+      (!value ||
+        (typeof value === "string" && value.trim() === "") ||
+        (Array.isArray(value) && value.length === 0))
     ) {
       fieldErrors.push(`${field.label} is required`);
     }
@@ -336,7 +343,7 @@ export default function DynamicForm({
 
       case FIELD_TYPES.RADIO:
         return (
-          <RadioField
+          <CheckboxField
             key={field.id}
             field={field}
             value={value}

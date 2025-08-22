@@ -5,7 +5,6 @@ import { useNavigate, Link } from "react-router-dom";
 import DynamicForm from "../components/DynamicForm";
 import { FormConfigService } from "../lib/formConfigService";
 import { backgroundSelectionService } from "../lib/backgroundSelectionService";
-import BackgroundSelectionWrapper from "../components/BackgroundSelectionWrapper";
 
 function Intake() {
   const { user } = useUser();
@@ -435,13 +434,4 @@ function Intake() {
   );
 }
 
-// Wrap the Intake component with BackgroundSelectionWrapper
-const IntakeWithBackground = () => {
-  return (
-    <BackgroundSelectionWrapper>
-      <Intake />
-    </BackgroundSelectionWrapper>
-  );
-};
-
-export default IntakeWithBackground;
+export default Intake;

@@ -255,42 +255,65 @@ export function getDifficultyDistributionForField(fieldId) {
 }
 
 export function detectStudyFieldFromBackground(studentData) {
-  const {
-    field_of_study = '',
-    current_skills = '',
-    interests = '',
-    goals = '',
-    education_level = ''
-  } = studentData;
+  // Pull from both top-level and responses JSON
+  const pick = (primary, fallback) => {
+    const val = primary ?? fallback ?? '';
+    if (Array.isArray(val)) return val.join(', ');
+    if (typeof val === 'object' && val !== null) return Object.values(val).join(' ');
+    return String(val || '');
+  };
 
-  const combinedText = `${field_of_study} ${current_skills} ${interests} ${goals} ${education_level}`.toLowerCase();
+  const field = pick(studentData.field_of_study, studentData.responses?.field_of_study);
+  const skills = pick(studentData.current_skills, studentData.responses?.current_skills);
+  const interests = pick(studentData.interests, studentData.responses?.interests);
+  const goals = pick(studentData.goals, studentData.responses?.goals);
+  const edu = pick(studentData.education_level, studentData.responses?.education_level);
 
-  // Check for STEM keywords
-  const stemKeywords = ['computer', 'software', 'programming', 'data science', 'engineering', 'physics', 'chemistry', 'biology', 'mathematics', 'math', 'science', 'technology', 'ai', 'machine learning', 'cybersecurity'];
+  const combinedText = `${field} ${skills} ${interests} ${goals} ${edu}`.toLowerCase();
+
+  // STEM keywords incl. common abbreviations
+  const stemKeywords = [
+    'computer', 'software', 'programming', 'coding', 'developer', 'data science', 'data scientist',
+    'engineering', 'engineer', 'physics', 'chemistry', 'biology', 'biotech', 'mathematics', 'math',
+    'science', 'technology', 'ai', 'machine learning', 'ml', 'deep learning', 'cybersecurity',
+    'cs', 'comp sci', 'it', 'ict', 'information technology'
+  ];
   if (stemKeywords.some(keyword => combinedText.includes(keyword))) {
     return STUDY_FIELDS.STEM.id;
   }
 
-  // Check for Business keywords
-  const businessKeywords = ['business', 'finance', 'marketing', 'economics', 'management', 'entrepreneurship', 'accounting', 'mba'];
+  // Business
+  const businessKeywords = [
+    'business', 'finance', 'marketing', 'economics', 'management', 'entrepreneurship', 'accounting',
+    'mba', 'sales', 'operations', 'supply chain', 'hr', 'human resources', 'commerce', 'bba'
+  ];
   if (businessKeywords.some(keyword => combinedText.includes(keyword))) {
     return STUDY_FIELDS.BUSINESS.id;
   }
 
-  // Check for Social Sciences keywords
-  const socialKeywords = ['psychology', 'sociology', 'political', 'social work', 'anthropology', 'history', 'philosophy'];
+  // Social Sciences
+  const socialKeywords = [
+    'psychology', 'psych', 'sociology', 'political', 'international relations', 'social work',
+    'anthropology', 'history', 'philosophy', 'geography', 'criminology'
+  ];
   if (socialKeywords.some(keyword => combinedText.includes(keyword))) {
     return STUDY_FIELDS.SOCIAL_SCIENCES.id;
   }
 
-  // Check for Health/Medicine keywords
-  const healthKeywords = ['medicine', 'medical', 'nursing', 'pharmacy', 'health', 'doctor', 'physician', 'therapy'];
+  // Health/Medicine
+  const healthKeywords = [
+    'medicine', 'medical', 'med', 'pre-med', 'nursing', 'pharmacy', 'health', 'public health',
+    'doctor', 'physician', 'dentistry', 'vet', 'veterinary', 'therapy', 'physiotherapy'
+  ];
   if (healthKeywords.some(keyword => combinedText.includes(keyword))) {
     return STUDY_FIELDS.HEALTH_MEDICINE.id;
   }
 
-  // Check for Creative Arts keywords
-  const artsKeywords = ['art', 'design', 'music', 'literature', 'creative', 'writing', 'theater', 'film', 'languages'];
+  // Creative Arts & Humanities
+  const artsKeywords = [
+    'art', 'design', 'graphic design', 'ui', 'ux', 'music', 'literature', 'linguistics', 'creative',
+    'writing', 'theater', 'film', 'languages', 'fine arts', 'humanities', 'philosophy'
+  ];
   if (artsKeywords.some(keyword => combinedText.includes(keyword))) {
     return STUDY_FIELDS.CREATIVE_ARTS.id;
   }

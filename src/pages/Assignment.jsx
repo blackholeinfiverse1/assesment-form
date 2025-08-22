@@ -280,6 +280,10 @@ export default function AssignmentPage() {
   }
 
   return (
-    <Assignment onComplete={handleAssignmentComplete} />
+    <Assignment
+      onComplete={handleAssignmentComplete}
+      userId={user?.id}
+      userEmail={user?.emailAddresses[0]?.emailAddress}
+    />
   );
 }
