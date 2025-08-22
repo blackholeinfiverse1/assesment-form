@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { BookOpen, Brain, Calculator, Code, Globe, Newspaper, Scroll, Plus, Edit2, Trash2, Search, Filter, Save, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ASSIGNMENT_CATEGORIES, DIFFICULTY_LEVELS } from '../data/assignment.js';
@@ -20,233 +21,6 @@ const DIFFICULTY_COLORS = {
   [DIFFICULTY_LEVELS.MEDIUM]: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
   [DIFFICULTY_LEVELS.HARD]: 'text-red-400 bg-red-400/10 border-red-400/20'
 };
-
-function QuestionForm({ question, onSave, onCancel }) {
-  const [formData, setFormData] = useState({
-    question_text: '',
-    category: ASSIGNMENT_CATEGORIES.CODING,
-    difficulty: DIFFICULTY_LEVELS.EASY,
-    options: ['', '', '', ''],
-    correct_answer: '',
-    explanation: '',
-    vedic_connection: '',
-    modern_application: '',
-    tags: [],
-    ...question
-  });
-
-  const [errors, setErrors] = useState({});
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.question_text.trim()) {
-      newErrors.question_text = 'Question text is required';
-    }
-
-    const nonEmptyOptions = formData.options.filter(opt => opt.trim());
-    if (nonEmptyOptions.length < 4) {
-      newErrors.options = 'All 4 options are required';
-    }
-
-    if (!formData.correct_answer.trim()) {
-      newErrors.correct_answer = 'Correct answer is required';
-    } else if (!formData.options.includes(formData.correct_answer)) {
-      newErrors.correct_answer = 'Correct answer must be one of the options';
-    }
-
-    if (!formData.explanation.trim()) {
-      newErrors.explanation = 'Explanation is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (validateForm()) {
-      onSave(formData);
-    }
-  };
-
-  const updateOption = (index, value) => {
-    const newOptions = [...formData.options];
-    newOptions[index] = value;
-    setFormData({ ...formData, options: newOptions });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-semibold text-white">
-            {question ? 'Edit Question' : 'Add New Question'}
-          </h3>
-          <button
-            onClick={onCancel}
-            className="p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Question Text */}
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
-              Question Text *
-            </label>
-            <textarea
-              value={formData.question_text}
-              onChange={(e) => setFormData({ ...formData, question_text: e.target.value })}
-              className="w-full p-3 rounded-lg bg-white/5 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-              rows={3}
-              placeholder="Enter the question text..."
-            />
-            {errors.question_text && (
-              <p className="text-red-400 text-sm mt-1">{errors.question_text}</p>
-            )}
-          </div>
-
-          {/* Category and Difficulty */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-white/80 mb-2">Category *</label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full p-3 rounded-lg bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-              >
-                {Object.values(ASSIGNMENT_CATEGORIES).map(category => (
-                  <option key={category} value={category} className="bg-gray-900">
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-white/80 mb-2">Difficulty *</label>
-              <select
-                value={formData.difficulty}
-                onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
-                className="w-full p-3 rounded-lg bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-              >
-                {Object.values(DIFFICULTY_LEVELS).map(difficulty => (
-                  <option key={difficulty} value={difficulty} className="bg-gray-900">
-                    {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Options */}
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">Answer Options *</label>
-            <div className="space-y-2">
-              {formData.options.map((option, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <span className="text-white/70 font-medium">
-                    {String.fromCharCode(65 + index)})
-                  </span>
-                  <input
-                    type="text"
-                    value={option}
-                    onChange={(e) => updateOption(index, e.target.value)}
-                    className="flex-1 p-3 rounded-lg bg-white/5 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-                    placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                  />
-                </div>
-              ))}
-            </div>
-            {errors.options && (
-              <p className="text-red-400 text-sm mt-1">{errors.options}</p>
-            )}
-          </div>
-
-          {/* Correct Answer */}
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">Correct Answer *</label>
-            <select
-              value={formData.correct_answer}
-              onChange={(e) => setFormData({ ...formData, correct_answer: e.target.value })}
-              className="w-full p-3 rounded-lg bg-white/5 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-            >
-              <option value="" className="bg-gray-900">Select correct answer</option>
-              {formData.options.filter(opt => opt.trim()).map((option, index) => (
-                <option key={index} value={option} className="bg-gray-900">
-                  {option}
-                </option>
-              ))}
-            </select>
-            {errors.correct_answer && (
-              <p className="text-red-400 text-sm mt-1">{errors.correct_answer}</p>
-            )}
-          </div>
-
-          {/* Explanation */}
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">Explanation *</label>
-            <textarea
-              value={formData.explanation}
-              onChange={(e) => setFormData({ ...formData, explanation: e.target.value })}
-              className="w-full p-3 rounded-lg bg-white/5 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-              rows={3}
-              placeholder="Explain why this is the correct answer..."
-            />
-            {errors.explanation && (
-              <p className="text-red-400 text-sm mt-1">{errors.explanation}</p>
-            )}
-          </div>
-
-          {/* Vedic Connection */}
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">Vedic Connection (Optional)</label>
-            <textarea
-              value={formData.vedic_connection}
-              onChange={(e) => setFormData({ ...formData, vedic_connection: e.target.value })}
-              className="w-full p-3 rounded-lg bg-white/5 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-              rows={2}
-              placeholder="Connection to Vedic knowledge or traditions..."
-            />
-          </div>
-
-          {/* Modern Application */}
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">Modern Application (Optional)</label>
-            <textarea
-              value={formData.modern_application}
-              onChange={(e) => setFormData({ ...formData, modern_application: e.target.value })}
-              className="w-full p-3 rounded-lg bg-white/5 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-              rows={2}
-              placeholder="How this knowledge applies in modern contexts..."
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-4 py-2 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors"
-            >
-              <Save className="w-4 h-4" />
-              {question ? 'Update Question' : 'Save Question'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 function QuestionCard({ question, onEdit, onDelete }) {
   const IconComponent = CATEGORY_ICONS[question.category] || BookOpen;
@@ -539,17 +313,716 @@ export default function QuestionBankManager() {
         </div>
       )}
 
-      {/* Question Form Modal */}
-      {showForm && (
-        <QuestionForm
-          question={editingQuestion}
-          onSave={handleSaveQuestion}
-          onCancel={() => {
-            setShowForm(false);
-            setEditingQuestion(null);
-          }}
-        />
-      )}
+      {/* Premium Question Form Modal */}
+      {showForm &&
+        createPortal(
+          <>
+            {/* Enhanced backdrop overlay */}
+            <div 
+              style={{
+              position: 'fixed',
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              background: 'radial-gradient(circle at center, rgba(234, 88, 12, 0.15) 0%, rgba(0, 0, 0, 0.8) 70%)',
+              backdropFilter: 'blur(12px)',
+              zIndex: 9999999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0',
+              margin: '0',
+              animation: 'fadeIn 0.3s ease-out'
+            }}
+            onClick={() => setShowForm(false)}
+          >
+            {/* Premium modal container with enhanced glass morphism */}
+            <div 
+              className="modal-container"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                borderRadius: '24px',
+                padding: '2.5rem',
+                width: '90vw',
+                maxWidth: '800px',
+                maxHeight: '90vh',
+                overflow: 'auto',
+                zIndex: 10000000,
+                boxShadow: '0 32px 64px rgba(0, 0, 0, 0.4), 0 8px 32px rgba(234, 88, 12, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
+                position: 'relative',
+                animation: 'modalSlideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Subtle gradient overlay */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '100px',
+                background: 'linear-gradient(180deg, rgba(234, 88, 12, 0.1) 0%, transparent 100%)',
+                borderRadius: '24px 24px 0 0',
+                pointerEvents: 'none'
+              }} />
+              {/* Premium header with enhanced styling */}
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                marginBottom: '2rem',
+                position: 'relative',
+                zIndex: 1
+              }}>
+                <div>
+                  <h2 style={{ 
+                    fontSize: '1.75rem', 
+                    fontWeight: '700', 
+                    color: 'white',
+                    margin: 0,
+                    marginBottom: '0.25rem',
+                    textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)'
+                  }}>
+                    {editingQuestion ? 'Edit Question' : 'Create New Question'}
+                  </h2>
+                  <p style={{
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    fontSize: '0.875rem',
+                    margin: 0
+                  }}>
+                    {editingQuestion ? 'Modify the question details below' : 'Add a new question to your question bank'}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setShowForm(false)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '12px',
+                    padding: '0.75rem',
+                    color: 'rgba(255, 255, 255, 0.8)',
+                    cursor: 'pointer',
+                    fontSize: '1.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '44px',
+                    height: '44px',
+                    transition: 'all 0.2s ease',
+                    backdropFilter: 'blur(8px)'
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.background = 'rgba(255, 255, 255, 0.25)';
+                    e.target.style.color = 'white';
+                    e.target.style.transform = 'scale(1.05)';
+                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.background = 'rgba(255, 255, 255, 0.15)';
+                    e.target.style.color = 'rgba(255, 255, 255, 0.8)';
+                    e.target.style.transform = 'scale(1)';
+                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+              
+              {/* Premium Question Text Field */}
+              <div style={{ marginBottom: '1.75rem', position: 'relative', zIndex: 1 }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.75rem', 
+                  fontWeight: '600',
+                  color: 'white',
+                  fontSize: '0.9rem',
+                  textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)'
+                }}>
+                  Question Text <span style={{ color: '#f97316' }}>*</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <textarea 
+                    style={{
+                      width: '100%',
+                      padding: '1rem',
+                      background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      borderRadius: '12px',
+                      minHeight: '100px',
+                      color: 'white',
+                      fontSize: '0.9rem',
+                      resize: 'vertical',
+                      outline: 'none',
+                      fontFamily: 'inherit',
+                      lineHeight: '1.6',
+                      transition: 'all 0.3s ease',
+                      backdropFilter: 'blur(8px)',
+                      boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
+                    }}
+                    placeholder="Enter your question here... Be clear and specific."
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#f97316';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(249, 115, 22, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1)';
+                      e.target.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                      e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.1)';
+                      e.target.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%)';
+                    }}
+                  />
+                  {/* Subtle glow effect */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '-2px',
+                    left: '-2px',
+                    right: '-2px',
+                    bottom: '-2px',
+                    background: 'linear-gradient(45deg, rgba(249, 115, 22, 0.1), rgba(234, 88, 12, 0.1))',
+                    borderRadius: '14px',
+                    zIndex: -1,
+                    opacity: 0,
+                    transition: 'opacity 0.3s ease'
+                  }} />
+                </div>
+              </div>
+              
+              {/* Premium Category and Difficulty Selection */}
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: '1fr 1fr', 
+                gap: '1.5rem', 
+                marginBottom: '1.75rem',
+                position: 'relative',
+                zIndex: 1
+              }}>
+                <div>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: '0.75rem', 
+                    fontWeight: '600',
+                    color: 'white',
+                    fontSize: '0.9rem',
+                    textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)'
+                  }}>
+                    Category <span style={{ color: '#f97316' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <select style={{
+                      width: '100%',
+                      padding: '1rem',
+                      background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      borderRadius: '12px',
+                      color: 'white',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                      appearance: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      backdropFilter: 'blur(8px)',
+                      boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#f97316';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(249, 115, 22, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1)';
+                      e.target.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                      e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.1)';
+                      e.target.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%)';
+                    }}>
+                      <option style={{ background: '#1f2937', color: 'white' }} value="">Select a category...</option>
+                      <option style={{ background: '#1f2937', color: 'white' }} value="Coding">💻 Coding</option>
+                      <option style={{ background: '#1f2937', color: 'white' }} value="Logic">🧠 Logic</option>
+                      <option style={{ background: '#1f2937', color: 'white' }} value="Mathematics">🔢 Mathematics</option>
+                      <option style={{ background: '#1f2937', color: 'white' }} value="Language">📚 Language</option>
+                      <option style={{ background: '#1f2937', color: 'white' }} value="Culture">🌍 Culture</option>
+                      <option style={{ background: '#1f2937', color: 'white' }} value="Vedic Knowledge">📜 Vedic Knowledge</option>
+                      <option style={{ background: '#1f2937', color: 'white' }} value="Current Affairs">📰 Current Affairs</option>
+                    </select>
+                    {/* Custom dropdown arrow */}
+                    <div style={{
+                      position: 'absolute',
+                      right: '1rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      pointerEvents: 'none',
+                      color: 'rgba(255, 255, 255, 0.5)'
+                    }}>
+                      ▼
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label style={{ 
+                    display: 'block', 
+                    marginBottom: '0.75rem', 
+                    fontWeight: '600',
+                    color: 'white',
+                    fontSize: '0.9rem',
+                    textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)'
+                  }}>
+                    Difficulty <span style={{ color: '#f97316' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <select style={{
+                      width: '100%',
+                      padding: '1rem',
+                      background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      borderRadius: '12px',
+                      color: 'white',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                      appearance: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      backdropFilter: 'blur(8px)',
+                      boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#f97316';
+                      e.target.style.boxShadow = '0 0 0 3px rgba(249, 115, 22, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1)';
+                      e.target.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                      e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.1)';
+                      e.target.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%)';
+                    }}>
+                      <option style={{ background: '#1f2937', color: 'white' }} value="">Select difficulty...</option>
+                      <option style={{ background: '#1f2937', color: 'white' }} value="Easy">🟢 Easy</option>
+                      <option style={{ background: '#1f2937', color: 'white' }} value="Medium">🟡 Medium</option>
+                      <option style={{ background: '#1f2937', color: 'white' }} value="Hard">🔴 Hard</option>
+                    </select>
+                    {/* Custom dropdown arrow */}
+                    <div style={{
+                      position: 'absolute',
+                      right: '1rem',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      pointerEvents: 'none',
+                      color: 'rgba(255, 255, 255, 0.5)'
+                    }}>
+                      ▼
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Premium Answer Options */}
+              <div style={{ marginBottom: '1.75rem', position: 'relative', zIndex: 1 }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '1rem', 
+                  fontWeight: '600',
+                  color: 'white',
+                  fontSize: '0.9rem',
+                  textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)'
+                }}>
+                  Answer Options <span style={{ color: '#f97316' }}>*</span>
+                </label>
+                <div style={{ 
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}>
+                  {['A', 'B', 'C', 'D'].map((letter, index) => (
+                    <div key={letter} style={{ 
+                      marginBottom: index === 3 ? '0' : '1rem', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '1rem' 
+                    }}>
+                      <div style={{
+                        width: '40px',
+                        height: '40px',
+                        background: 'linear-gradient(135deg, #f97316, #ea580c)',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: '700',
+                        color: 'white',
+                        fontSize: '0.875rem',
+                        boxShadow: '0 4px 12px rgba(249, 115, 22, 0.3)',
+                        textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)'
+                      }}>
+                        {letter}
+                      </div>
+                      <input 
+                        type="text"
+                        style={{
+                          flex: 1,
+                          padding: '1rem',
+                          background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          borderRadius: '12px',
+                          color: 'white',
+                          fontSize: '0.9rem',
+                          outline: 'none',
+                          transition: 'all 0.3s ease',
+                          backdropFilter: 'blur(8px)',
+                          boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
+                        }}
+                        placeholder={`Enter option ${letter}...`}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#f97316';
+                          e.target.style.boxShadow = '0 0 0 3px rgba(249, 115, 22, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1)';
+                          e.target.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                          e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.1)';
+                          e.target.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%)';
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Premium Correct Answer Selection */}
+              <div style={{ marginBottom: '1.75rem', position: 'relative', zIndex: 1 }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.75rem', 
+                  fontWeight: '600',
+                  color: 'white',
+                  fontSize: '0.9rem',
+                  textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)'
+                }}>
+                  Correct Answer <span style={{ color: '#f97316' }}>*</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <select style={{
+                    width: '100%',
+                    padding: '1rem',
+                    background: 'linear-gradient(145deg, rgba(34, 197, 94, 0.1) 0%, rgba(21, 128, 61, 0.05) 100%)',
+                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                    borderRadius: '12px',
+                    color: 'white',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                    appearance: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    backdropFilter: 'blur(8px)',
+                    boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(34, 197, 94, 0.1)'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#22c55e';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(34, 197, 94, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(34, 197, 94, 0.1)';
+                    e.target.style.background = 'linear-gradient(145deg, rgba(34, 197, 94, 0.15) 0%, rgba(21, 128, 61, 0.08) 100%)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+                    e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(34, 197, 94, 0.1)';
+                    e.target.style.background = 'linear-gradient(145deg, rgba(34, 197, 94, 0.1) 0%, rgba(21, 128, 61, 0.05) 100%)';
+                  }}>
+                    <option style={{ background: '#1f2937', color: 'white' }} value="">Select the correct answer...</option>
+                    <option style={{ background: '#1f2937', color: '#22c55e' }} value="A">✓ Option A</option>
+                    <option style={{ background: '#1f2937', color: '#22c55e' }} value="B">✓ Option B</option>
+                    <option style={{ background: '#1f2937', color: '#22c55e' }} value="C">✓ Option C</option>
+                    <option style={{ background: '#1f2937', color: '#22c55e' }} value="D">✓ Option D</option>
+                  </select>
+                  {/* Custom dropdown arrow with green accent */}
+                  <div style={{
+                    position: 'absolute',
+                    right: '1rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    pointerEvents: 'none',
+                    color: 'rgba(34, 197, 94, 0.7)'
+                  }}>
+                    ▼
+                  </div>
+                </div>
+              </div>
+              
+              {/* Premium Explanation Field */}
+              <div style={{ marginBottom: '1.75rem', position: 'relative', zIndex: 1 }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.75rem', 
+                  fontWeight: '600',
+                  color: 'white',
+                  fontSize: '0.9rem',
+                  textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)'
+                }}>
+                  Explanation <span style={{ color: '#f97316' }}>*</span>
+                </label>
+                <textarea 
+                  style={{
+                    width: '100%',
+                    padding: '1rem',
+                    background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '12px',
+                    minHeight: '80px',
+                    color: 'white',
+                    fontSize: '0.9rem',
+                    resize: 'vertical',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                    lineHeight: '1.6',
+                    transition: 'all 0.3s ease',
+                    backdropFilter: 'blur(8px)',
+                    boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
+                  }}
+                  placeholder="Explain why this is the correct answer. Provide clear reasoning..."
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#f97316';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(249, 115, 22, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1)';
+                    e.target.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                    e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.1)';
+                    e.target.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%)';
+                  }}
+                />
+              </div>
+              
+              {/* Premium Vedic Connection Field */}
+              <div style={{ marginBottom: '1.75rem', position: 'relative', zIndex: 1 }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.75rem', 
+                  fontWeight: '600',
+                  color: 'white',
+                  fontSize: '0.9rem',
+                  textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <span style={{ color: '#fbbf24' }}>🕉️</span>
+                  Vedic Connection
+                  <span style={{ 
+                    fontSize: '0.75rem',
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    fontWeight: '400'
+                  }}>
+                    (Optional)
+                  </span>
+                </label>
+                <textarea 
+                  style={{
+                    width: '100%',
+                    padding: '1rem',
+                    background: 'linear-gradient(145deg, rgba(251, 191, 36, 0.08) 0%, rgba(245, 158, 11, 0.05) 100%)',
+                    border: '1px solid rgba(251, 191, 36, 0.2)',
+                    borderRadius: '12px',
+                    minHeight: '70px',
+                    color: 'white',
+                    fontSize: '0.9rem',
+                    resize: 'vertical',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                    lineHeight: '1.6',
+                    transition: 'all 0.3s ease',
+                    backdropFilter: 'blur(8px)',
+                    boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(251, 191, 36, 0.1)'
+                  }}
+                  placeholder="Connect this question to ancient Vedic knowledge, traditions, or principles..."
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#fbbf24';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(251, 191, 36, 0.1)';
+                    e.target.style.background = 'linear-gradient(145deg, rgba(251, 191, 36, 0.12) 0%, rgba(245, 158, 11, 0.08) 100%)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'rgba(251, 191, 36, 0.2)';
+                    e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(251, 191, 36, 0.1)';
+                    e.target.style.background = 'linear-gradient(145deg, rgba(251, 191, 36, 0.08) 0%, rgba(245, 158, 11, 0.05) 100%)';
+                  }}
+                />
+              </div>
+              
+              {/* Premium Modern Application Field */}
+              <div style={{ marginBottom: '2.5rem', position: 'relative', zIndex: 1 }}>
+                <label style={{ 
+                  display: 'block', 
+                  marginBottom: '0.75rem', 
+                  fontWeight: '600',
+                  color: 'white',
+                  fontSize: '0.9rem',
+                  textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <span style={{ color: '#06b6d4' }}>🌐</span>
+                  Modern Application
+                  <span style={{ 
+                    fontSize: '0.75rem',
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    fontWeight: '400'
+                  }}>
+                    (Optional)
+                  </span>
+                </label>
+                <textarea 
+                  style={{
+                    width: '100%',
+                    padding: '1rem',
+                    background: 'linear-gradient(145deg, rgba(6, 182, 212, 0.08) 0%, rgba(8, 145, 178, 0.05) 100%)',
+                    border: '1px solid rgba(6, 182, 212, 0.2)',
+                    borderRadius: '12px',
+                    minHeight: '70px',
+                    color: 'white',
+                    fontSize: '0.9rem',
+                    resize: 'vertical',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                    lineHeight: '1.6',
+                    transition: 'all 0.3s ease',
+                    backdropFilter: 'blur(8px)',
+                    boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(6, 182, 212, 0.1)'
+                  }}
+                  placeholder="Explain how this knowledge applies in modern contexts, technology, or daily life..."
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#06b6d4';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(6, 182, 212, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(6, 182, 212, 0.1)';
+                    e.target.style.background = 'linear-gradient(145deg, rgba(6, 182, 212, 0.12) 0%, rgba(8, 145, 178, 0.08) 100%)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = 'rgba(6, 182, 212, 0.2)';
+                    e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(6, 182, 212, 0.1)';
+                    e.target.style.background = 'linear-gradient(145deg, rgba(6, 182, 212, 0.08) 0%, rgba(8, 145, 178, 0.05) 100%)';
+                  }}
+                />
+              </div>
+              
+              {/* Premium Action Buttons */}
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'flex-end', 
+                gap: '1rem',
+                position: 'relative',
+                zIndex: 1
+              }}>
+                <button 
+                  onClick={() => setShowForm(false)}
+                  style={{
+                    padding: '1rem 2rem',
+                    background: 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)',
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    backdropFilter: 'blur(8px)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.1) 100%)';
+                    e.target.style.color = 'white';
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.2)';
+                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.background = 'linear-gradient(145deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.06) 100%)';
+                    e.target.style.color = 'rgba(255, 255, 255, 0.9)';
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => {
+                    alert('Question would be saved here!');
+                    setShowForm(false);
+                  }}
+                  style={{
+                    padding: '1rem 2rem',
+                    background: 'linear-gradient(135deg, #ea580c 0%, #f97316 50%, #fb923c 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    fontWeight: '700',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: '0 8px 24px rgba(234, 88, 12, 0.4), 0 4px 12px rgba(249, 115, 22, 0.3)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
+                    backgroundSize: '200% 200%',
+                    animation: 'gradientShift 3s ease infinite'
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.background = 'linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #f97316 100%)';
+                    e.target.style.transform = 'translateY(-3px) scale(1.02)';
+                    e.target.style.boxShadow = '0 12px 32px rgba(234, 88, 12, 0.5), 0 6px 16px rgba(249, 115, 22, 0.4)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.background = 'linear-gradient(135deg, #ea580c 0%, #f97316 50%, #fb923c 100%)';
+                    e.target.style.transform = 'translateY(0) scale(1)';
+                    e.target.style.boxShadow = '0 8px 24px rgba(234, 88, 12, 0.4), 0 4px 12px rgba(249, 115, 22, 0.3)';
+                  }}
+                >
+                  ✨ {editingQuestion ? 'Update Question' : 'Save Question'}
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Add CSS animations */}
+          <style>{`
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            
+            @keyframes modalSlideIn {
+              from { 
+                opacity: 0; 
+                transform: scale(0.9) translateY(-30px); 
+              }
+              to { 
+                opacity: 1; 
+                transform: scale(1) translateY(0); 
+              }
+            }
+            
+            @keyframes gradientShift {
+              0%, 100% { background-position: 0% 50%; }
+              50% { background-position: 100% 50%; }
+            }
+            
+            /* Responsive modal adjustments */
+            @media (max-width: 768px) {
+              .modal-container {
+                width: 95vw !important;
+                padding: 1.5rem !important;
+                max-height: 95vh !important;
+              }
+            }
+            
+            @media (max-height: 600px) {
+              .modal-container {
+                padding: 1rem !important;
+                max-height: 98vh !important;
+              }
+            }
+          `}</style>
+          </>,
+          document.body
+        )}
     </div>
   );
 }
