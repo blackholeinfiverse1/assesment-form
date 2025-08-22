@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from 'react-dom';
+import { Trash2 } from 'lucide-react';
 import toast from "react-hot-toast";
 import FormBuilder from "../components/FormBuilder";
 import QuestionBankManager from "../components/QuestionBankManager";
@@ -130,6 +132,9 @@ export default function Admin() {
   const [configToActivate, setConfigToActivate] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [configToDelete, setConfigToDelete] = useState(null);
+
+  // Student delete confirmation
+  const [studentDeleteConfirm, setStudentDeleteConfirm] = useState(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -373,8 +378,12 @@ export default function Admin() {
     setLoading(false);
   }
 
-  async function onDelete(id) {
-    if (!confirm("Delete this record?")) return;
+  function onDelete(student) {
+    setStudentDeleteConfirm(student);
+  }
+
+  async function confirmStudentDelete() {
+    if (!studentDeleteConfirm) return;
 
     const loadingToast = toast.loading("Deleting student...");
     setLoading(true);
@@ -382,7 +391,7 @@ export default function Admin() {
     const { error: err } = await supabase
       .from(SUPABASE_TABLE)
       .delete()
-      .eq("id", id);
+      .eq("id", studentDeleteConfirm.id);
 
     if (err) {
       toast.error(err.message, { id: loadingToast });
@@ -392,6 +401,7 @@ export default function Admin() {
       fetchStudents();
     }
     setLoading(false);
+    setStudentDeleteConfirm(null);
   }
 
   if (!isAdmin) {
@@ -606,7 +616,7 @@ export default function Admin() {
                             Edit
                           </button>
                           <button
-                            onClick={() => onDelete(s.id)}
+                            onClick={() => onDelete(s)}
                             className="btn px-3 py-1 text-xs"
                           >
                             Delete
@@ -1220,6 +1230,68 @@ export default function Admin() {
         <div className="card">
           <QuestionBankManager />
         </div>
+      )}
+
+      {/* Student Delete Confirmation Modal */}
+      {studentDeleteConfirm && createPortal(
+        <div 
+          style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0, left: 0,
+            background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)', 
+            zIndex: 10000000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'fadeIn 0.3s ease-out'
+          }}
+          onClick={() => setStudentDeleteConfirm(null)}
+        >
+          <div 
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%)',
+              backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.25)',
+              borderRadius: '20px', padding: '2rem', maxWidth: '400px', width: '90%'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ 
+                width: '64px', height: '64px', borderRadius: '50%', 
+                background: 'rgba(239, 68, 68, 0.2)', margin: '0 auto 1rem',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <Trash2 className="w-8 h-8 text-red-400" />
+              </div>
+              <h3 style={{ color: 'white', fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                Delete Student Record?
+              </h3>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>
+                This action cannot be undone. The student record for "{studentDeleteConfirm.name}" will be permanently removed from the database.
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                onClick={() => setStudentDeleteConfirm(null)}
+                style={{
+                  flex: 1, padding: '0.75rem', borderRadius: '12px',
+                  border: '1px solid rgba(255,255,255,0.25)', 
+                  background: 'rgba(255,255,255,0.12)', color: 'white'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmStudentDelete}
+                style={{
+                  flex: 1, padding: '0.75rem', borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #dc2626, #ef4444)', 
+                  color: 'white', border: 'none'
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
