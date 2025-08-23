@@ -50,6 +50,7 @@ export const DEFAULT_FORM_CONFIG = {
       placeholder: "e.g., Asha Gupta",
       required: true,
       order: 1,
+      section: "personal_info",
       validation: {
         minLength: 2,
         maxLength: 100,
@@ -62,6 +63,7 @@ export const DEFAULT_FORM_CONFIG = {
       placeholder: "17",
       required: false,
       order: 2,
+      section: "personal_info",
       validation: {
         min: 5,
         max: 100,
@@ -74,6 +76,7 @@ export const DEFAULT_FORM_CONFIG = {
       placeholder: "your.email@example.com",
       required: false,
       order: 3,
+      section: "personal_info",
     },
     {
       id: "phone",
@@ -82,40 +85,10 @@ export const DEFAULT_FORM_CONFIG = {
       placeholder: "999-000-1234",
       required: false,
       order: 4,
+      section: "personal_info",
       validation: {
         pattern: "^[\\d\\s\\-\\+\\(\\)\\.]+$",
       },
-    },
-    {
-      id: "education_level",
-      type: FIELD_TYPES.SELECT,
-      label: "Education Level",
-      placeholder: "Select your education level",
-      required: false,
-      order: 5,
-      options: [
-        { value: "high_school", label: "High School" },
-        { value: "undergraduate", label: "Undergraduate" },
-        { value: "graduate", label: "Graduate" },
-        { value: "postgraduate", label: "Postgraduate" },
-        { value: "other", label: "Other" },
-      ],
-    },
-    {
-      id: "field_of_study",
-      type: FIELD_TYPES.SELECT,
-      label: "Field of Study",
-      placeholder: "Select your field of study",
-      required: true,
-      order: 6,
-      options: [
-        { value: "stem", label: "🔬 STEM (Science, Technology, Engineering, Mathematics)" },
-        { value: "business", label: "💼 Business & Economics" },
-        { value: "social_sciences", label: "🏛️ Social Sciences" },
-        { value: "health_medicine", label: "⚕️ Health & Medicine" },
-        { value: "creative_arts", label: "🎨 Creative Arts & Humanities" },
-        { value: "other", label: "📚 Other Fields" },
-      ],
     },
     {
       id: "current_skills",
@@ -124,6 +97,7 @@ export const DEFAULT_FORM_CONFIG = {
       placeholder: "JavaScript, Algebra, Writing",
       required: false,
       order: 7,
+      section: "academic_info",
       helpText: "Example: JavaScript, Algebra, Writing",
     },
     {
@@ -133,6 +107,7 @@ export const DEFAULT_FORM_CONFIG = {
       placeholder: "Programming, Mathematics, Art",
       required: false,
       order: 8,
+      section: "academic_info",
       helpText: "Example: Programming, Mathematics, Art",
     },
     {
@@ -142,6 +117,7 @@ export const DEFAULT_FORM_CONFIG = {
       placeholder: "What do you want to achieve?",
       required: false,
       order: 9,
+      section: "academic_info",
     },
     {
       id: "preferred_learning_style",
@@ -149,6 +125,7 @@ export const DEFAULT_FORM_CONFIG = {
       label: "Preferred Learning Style",
       required: false,
       order: 10,
+      section: "preferences",
       options: [
         { value: "video", label: "Video" },
         { value: "text", label: "Text" },
@@ -163,6 +140,7 @@ export const DEFAULT_FORM_CONFIG = {
       placeholder: "6",
       required: false,
       order: 11,
+      section: "preferences",
       validation: {
         min: 0,
         max: 168,
@@ -175,6 +153,7 @@ export const DEFAULT_FORM_CONFIG = {
       placeholder: "0",
       required: false,
       order: 12,
+      section: "preferences",
       validation: {
         min: 0,
         max: 50,

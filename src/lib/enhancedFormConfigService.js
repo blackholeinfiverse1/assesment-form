@@ -139,16 +139,35 @@ export class EnhancedFormConfigService {
     
     if (includeBackground) {
       const backgroundFields = await this.getBackgroundSelectionFields(adminBackgroundConfig);
+      
+      // Remove any duplicate fields from baseConfig that exist in backgroundFields
+      const backgroundFieldIds = backgroundFields.map(f => f.id);
+      allFields = allFields.filter(field => !backgroundFieldIds.includes(field.id));
+      
+      // Combine background fields with remaining base fields
       allFields = [...backgroundFields, ...allFields];
     }
     
+    // Ensure no duplicate field IDs exist
+    const uniqueFields = [];
+    const seenIds = new Set();
+    
+    allFields.forEach(field => {
+      if (!seenIds.has(field.id)) {
+        seenIds.add(field.id);
+        uniqueFields.push(field);
+      } else {
+        console.warn(`Duplicate field detected and removed: ${field.id}`);
+      }
+    });
+    
     // Sort fields by order
-    allFields.sort((a, b) => (a.order || 0) - (b.order || 0));
+    uniqueFields.sort((a, b) => (a.order || 0) - (b.order || 0));
     
     return {
       ...baseConfig,
-      fields: allFields,
-      sections: this.organizeSections(allFields),
+      fields: uniqueFields,
+      sections: this.organizeSections(uniqueFields),
       hasBackgroundSelection: includeBackground
     };
   }
@@ -159,14 +178,50 @@ export class EnhancedFormConfigService {
    * @returns {Object} Organized sections
    */
   static organizeSections(fields) {
-    const sections = {};
+    const sections = {
+      background_selection: {
+        title: "Background Selection",
+        description: "Tell us about your academic background and goals",
+        icon: "GraduationCap",
+        order: -3
+      },
+      personal_info: {
+        title: "Personal Information",
+        description: "Basic information about you",
+        icon: "User",
+        order: 0
+      },
+      academic_info: {
+        title: "Academic Details",
+        description: "Your educational background and preferences",
+        icon: "BookOpen",
+        order: 1
+      },
+      preferences: {
+        title: "Learning Preferences",
+        description: "How you prefer to learn",
+        icon: "Settings",
+        order: 2
+      },
+      general: {
+        title: "Additional Information",
+        description: "Other relevant details",
+        icon: "Settings",
+        order: 3
+      }
+    };
     
     fields.forEach(field => {
       const sectionName = field.section || 'general';
-      if (!sections[sectionName]) {
-        sections[sectionName] = [];
+      if (!sections[sectionName] && sectionName !== 'general') {
+        // Create a dynamic section if it doesn't exist
+        sections[sectionName] = {
+          title: sectionName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          description: `Section for ${sectionName} fields`,
+          icon: "Settings",
+          order: 10
+        };
       }
-      sections[sectionName].push(field);
     });
     
     return sections;
