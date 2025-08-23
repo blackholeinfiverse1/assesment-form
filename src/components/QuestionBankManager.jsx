@@ -166,23 +166,100 @@ export default function QuestionBankManager() {
 
   async function loadStudyFields() {
     try {
-      const { data, error } = await supabase
-        .from('study_fields')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: true });
+      console.log('Loading study fields...');
       
-      if (error) throw error;
+      // Try different query strategies based on what columns exist
+      let data = null;
+      let error = null;
       
-      // Add colors to fields
+      // Strategy 1: Try full query
+      try {
+        const result = await supabase
+          .from('study_fields')
+          .select(`
+            field_id,
+            name,
+            short_name,
+            icon,
+            description,
+            color,
+            is_active,
+            subcategories,
+            question_weights,
+            difficulty_distribution,
+            created_at,
+            updated_at
+          `)
+          .eq('is_active', true)
+          .order('created_at', { ascending: true });
+        
+        data = result.data;
+        error = result.error;
+        
+        if (!error) {
+          console.log('Full query successful:', data);
+        }
+      } catch (fullQueryError) {
+        console.log('Full query failed, trying minimal query...');
+        error = fullQueryError;
+      }
+      
+      // Strategy 2: Try minimal query if full query fails
+      if (error) {
+        try {
+          const result = await supabase
+            .from('study_fields')
+            .select('*')
+            .order('created_at', { ascending: true });
+          
+          data = result.data;
+          error = result.error;
+          
+          if (!error) {
+            console.log('Minimal query successful:', data);
+          }
+        } catch (minimalError) {
+          console.log('Minimal query also failed:', minimalError);
+          error = minimalError;
+        }
+      }
+      
+      if (error) {
+        console.error('All query strategies failed:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
+      
+      // Add colors to fields and ensure required properties
       const fieldsWithColors = (data || []).map((field, index) => ({
-        ...field,
-        color: field.color || FIELD_COLORS[index % FIELD_COLORS.length]
+        field_id: field.field_id || field.id,
+        name: field.name || 'Unknown Field',
+        short_name: field.short_name || field.name || 'Unknown',
+        icon: field.icon || '📚',
+        description: field.description || '',
+        color: field.color || FIELD_COLORS[index % FIELD_COLORS.length],
+        is_active: field.is_active !== undefined ? field.is_active : true,
+        subcategories: field.subcategories || [],
+        question_weights: field.question_weights || {},
+        difficulty_distribution: field.difficulty_distribution || {},
+        created_at: field.created_at,
+        updated_at: field.updated_at
       }));
       
       setStudyFields(fieldsWithColors);
+      console.log('Study fields loaded successfully:', fieldsWithColors);
+      
     } catch (error) {
       console.error('Error loading study fields:', error);
+      console.error('Detailed error:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
       // Initialize with default fields if table doesn't exist or is empty
       await initializeDefaultFields();
     }
@@ -190,11 +267,11 @@ export default function QuestionBankManager() {
 
   async function initializeDefaultFields() {
     const defaultFields = [
-      { field_id: 'stem', name: 'STEM', icon: '🔬', description: 'Science, Technology, Engineering, and Mathematics' },
-      { field_id: 'business', name: 'Business', icon: '💼', description: 'Business and Economics' },
-      { field_id: 'social_sciences', name: 'Social Sciences', icon: '🏛️', description: 'Social Sciences and Humanities' },
-      { field_id: 'health_medicine', name: 'Health & Medicine', icon: '⚕️', description: 'Healthcare and Medical Sciences' },
-      { field_id: 'creative_arts', name: 'Creative Arts', icon: '🎨', description: 'Arts, Design, and Creative Fields' }
+      { field_id: 'stem', name: 'STEM', icon: '🔬', description: 'Science, Technology, Engineering, and Mathematics', short_name: 'STEM' },
+      { field_id: 'business', name: 'Business', icon: '💼', description: 'Business and Economics', short_name: 'Business' },
+      { field_id: 'social_sciences', name: 'Social Sciences', icon: '🏛️', description: 'Social Sciences and Humanities', short_name: 'Social Sciences' },
+      { field_id: 'health_medicine', name: 'Health & Medicine', icon: '⚕️', description: 'Healthcare and Medical Sciences', short_name: 'Health & Medicine' },
+      { field_id: 'creative_arts', name: 'Creative Arts', icon: '🎨', description: 'Arts, Design, and Creative Fields', short_name: 'Creative Arts' }
     ];
 
     try {
@@ -202,19 +279,31 @@ export default function QuestionBankManager() {
         ...field,
         color: FIELD_COLORS[index],
         is_active: true,
+        subcategories: [],
+        question_weights: {},
+        difficulty_distribution: {},
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }));
 
+      console.log('Attempting to insert default fields:', fieldsWithColors);
+      
       const { error } = await supabase
         .from('study_fields')
         .upsert(fieldsWithColors, { onConflict: 'field_id' });
 
       if (error) {
         console.error('Error initializing default fields:', error);
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         // Fallback to local state if database operations fail
         setStudyFields(fieldsWithColors);
       } else {
+        console.log('Default fields initialized successfully');
         setStudyFields(fieldsWithColors);
       }
     } catch (error) {
@@ -455,31 +544,102 @@ export default function QuestionBankManager() {
 
       const field_id = editingField?.field_id || name.toLowerCase().replace(/[^a-z0-9]/g, '_');
       const color = editingField?.color || FIELD_COLORS[studyFields.length % FIELD_COLORS.length];
-
-      const payload = {
-        field_id,
-        name,
-        icon,
-        description: description || null,
-        color,
-        is_active: true,
-        updated_at: new Date().toISOString()
-      };
+      const short_name = name; // Use name as short_name
 
       if (editingField) {
-        // Update existing field
+        // Update existing field - try different strategies
+        const updatePayload = {
+          name,
+          icon,
+          description: description || null,
+          color,
+          is_active: true,
+          updated_at: new Date().toISOString()
+        };
+        
+        // Add optional fields if they exist in the schema
+        try {
+          updatePayload.short_name = short_name;
+        } catch (e) {
+          console.log('short_name column may not exist, skipping');
+        }
+        
+        console.log('Updating field with payload:', updatePayload);
+        
         const { error } = await supabase
           .from('study_fields')
-          .update(payload)
+          .update(updatePayload)
           .eq('field_id', editingField.field_id);
-        if (error) throw error;
+        
+        if (error) {
+          console.error('Update error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw error;
+        }
       } else {
-        // Insert new field
-        payload.created_at = new Date().toISOString();
-        const { error } = await supabase
+        // Insert new field - try comprehensive payload first, then minimal
+        let insertPayload = {
+          field_id,
+          name,
+          icon,
+          description: description || null,
+          color,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        // Try to add optional fields
+        try {
+          insertPayload.short_name = short_name;
+          insertPayload.subcategories = [];
+          insertPayload.question_weights = {};
+          insertPayload.difficulty_distribution = {};
+        } catch (e) {
+          console.log('Some optional columns may not exist');
+        }
+        
+        console.log('Inserting field with payload:', insertPayload);
+        
+        let { error } = await supabase
           .from('study_fields')
-          .insert([payload]);
-        if (error) throw error;
+          .insert([insertPayload]);
+        
+        // If comprehensive insert fails, try minimal payload
+        if (error && error.message?.includes('column')) {
+          console.log('Comprehensive insert failed, trying minimal payload...');
+          
+          const minimalPayload = {
+            field_id,
+            name,
+            icon,
+            description: description || null,
+            color,
+            is_active: true
+          };
+          
+          console.log('Trying minimal payload:', minimalPayload);
+          
+          const result = await supabase
+            .from('study_fields')
+            .insert([minimalPayload]);
+          
+          error = result.error;
+        }
+        
+        if (error) {
+          console.error('Insert error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw error;
+        }
       }
 
       toast.success(editingField ? 'Field updated' : 'Field added');
@@ -488,7 +648,23 @@ export default function QuestionBankManager() {
       await loadStudyFields();
     } catch (error) {
       console.error('Error saving field:', error);
-      toast.error('Failed to save field');
+      console.error('Error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      
+      let errorMessage = 'Failed to save field';
+      if (error.message?.includes('duplicate key')) {
+        errorMessage = 'A field with this name already exists';
+      } else if (error.message?.includes('column')) {
+        errorMessage = 'Database schema issue - please run the setup script';
+      } else if (error.message) {
+        errorMessage = `Failed to save field: ${error.message}`;
+      }
+      
+      toast.error(errorMessage);
     }
   }
 
