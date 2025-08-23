@@ -234,11 +234,11 @@ function StudentDetailsModal({ student, onClose, getSeedLevel }) {
       onClick={onClose}
     >
       <div 
-        className="bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-xl border-2 border-orange-500/50 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
+        className="bg-white/10 backdrop-blur-xl border-2 border-orange-500/50 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-6 border-b-2 border-orange-500/50 bg-gradient-to-r from-slate-800/90 to-slate-700/90">
+        <div className="p-6 border-b-2 border-orange-500/50 bg-white/5 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-2xl font-bold bg-gradient-to-r from-white to-orange-200 bg-clip-text text-transparent">
@@ -260,7 +260,7 @@ function StudentDetailsModal({ student, onClose, getSeedLevel }) {
 
         {/* Content */}
         <div 
-          className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] bg-gradient-to-br from-slate-900/90 to-slate-800/90"
+          className="p-6 overflow-y-auto max-h-[calc(90vh-120px)] bg-white/5 backdrop-blur-sm"
           style={{
             scrollbarWidth: 'thin',
             scrollbarColor: '#ea580c rgba(15, 15, 15, 0.9)'
@@ -285,8 +285,8 @@ function StudentDetailsModal({ student, onClose, getSeedLevel }) {
                 </span>
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/10 backdrop-blur-sm border border-blue-500/30 shadow-lg">
-              <div className="text-blue-300 text-sm font-medium mb-1">Time Taken</div>
+            <div className="p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 shadow-lg">
+              <div className="text-white/70 text-sm font-medium mb-1">Time Taken</div>
               <div className="text-3xl font-bold text-white">
                 {Math.floor(student.time_taken_seconds / 60)}m
               </div>
@@ -323,7 +323,7 @@ function StudentDetailsModal({ student, onClose, getSeedLevel }) {
             ) : (
               <div className="space-y-4">
                 {responses.map((response, index) => (
-                  <div key={response.id} className="p-6 rounded-xl bg-gradient-to-br from-slate-800/80 to-slate-900/60 backdrop-blur-sm border border-slate-600/50 hover:border-orange-500/50 transition-all duration-300 shadow-lg hover:shadow-xl">
+                  <div key={response.id} className="p-6 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 hover:border-orange-500/50 transition-all duration-300 shadow-lg hover:shadow-xl">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <span className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-medium rounded-full shadow-lg">Q{index + 1}</span>
@@ -342,17 +342,17 @@ function StudentDetailsModal({ student, onClose, getSeedLevel }) {
                     </div>
 
                     <div className="space-y-3">
-                      <div className="p-4 rounded-lg bg-gradient-to-r from-blue-500/10 to-blue-600/5 border-l-4 border-blue-400 backdrop-blur-sm">
-                        <span className="text-blue-300 font-semibold text-sm">Student Answer: </span>
+                      <div className="p-4 rounded-lg bg-white/10 backdrop-blur-sm border-l-4 border-orange-400">
+                        <span className="text-orange-300 font-semibold text-sm">Student Answer: </span>
                         <span className="text-white/90">{response.user_answer}</span>
                       </div>
                       {response.user_explanation && (
-                        <div className="p-4 rounded-lg bg-gradient-to-r from-purple-500/10 to-purple-600/5 border-l-4 border-purple-400 backdrop-blur-sm">
+                        <div className="p-4 rounded-lg bg-white/10 backdrop-blur-sm border-l-4 border-purple-400">
                           <span className="text-purple-300 font-semibold text-sm">Explanation: </span>
                           <span className="text-white/90">{response.user_explanation}</span>
                         </div>
                       )}
-                      <div className="p-4 rounded-lg bg-gradient-to-r from-green-500/10 to-green-600/5 border-l-4 border-green-400 backdrop-blur-sm">
+                      <div className="p-4 rounded-lg bg-white/10 backdrop-blur-sm border-l-4 border-green-400">
                         <span className="text-green-300 font-semibold text-sm">Correct Answer: </span>
                         <span className="text-green-300 font-semibold">{response.correct_answer}</span>
                       </div>
