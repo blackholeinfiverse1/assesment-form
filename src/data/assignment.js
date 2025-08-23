@@ -1,4 +1,6 @@
 // Assignment data structures and configurations
+// Note: ASSIGNMENT_CATEGORIES is deprecated - use DynamicQuestionCategoryService instead
+// Kept for backward compatibility only
 
 export const ASSIGNMENT_CATEGORIES = {
   CODING: 'Coding',
@@ -23,10 +25,12 @@ export const QUESTION_TYPES = {
   CODE: 'code'
 };
 
-// Assignment configuration
+// Assignment configuration - Dynamic Categories
+// Category distribution is now managed by DynamicQuestionCategoryService
 export const ASSIGNMENT_CONFIG = {
   TOTAL_QUESTIONS: 10,
   TIME_LIMIT_MINUTES: 30,
+  // DEPRECATED: Use DynamicQuestionCategoryService.getQuestionWeights() instead
   CATEGORY_DISTRIBUTION: {
     [ASSIGNMENT_CATEGORIES.CODING]: 2,
     [ASSIGNMENT_CATEGORIES.LOGIC]: 1,
@@ -42,6 +46,41 @@ export const ASSIGNMENT_CONFIG = {
     [DIFFICULTY_LEVELS.HARD]: 2
   }
 };
+
+/**
+ * Helper function to get dynamic category distribution
+ * Uses DynamicQuestionCategoryService for category weights
+ */
+export async function getDynamicCategoryDistribution(totalQuestions = 10) {
+  try {
+    const { DynamicQuestionCategoryService } = await import('../lib/dynamicQuestionCategoryService');
+    const weights = await DynamicQuestionCategoryService.getQuestionWeights();
+    const distribution = {};
+    
+    // Calculate question count for each category based on weights
+    Object.entries(weights).forEach(([categoryName, weight]) => {
+      const questionCount = Math.round((weight / 100) * totalQuestions);
+      distribution[categoryName] = Math.max(1, questionCount); // Ensure at least 1 question
+    });
+    
+    // Adjust if total doesn't match due to rounding
+    const currentTotal = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+    if (currentTotal !== totalQuestions) {
+      const difference = totalQuestions - currentTotal;
+      const categories = Object.keys(distribution);
+      if (categories.length > 0) {
+        // Add/subtract from the first category
+        distribution[categories[0]] += difference;
+      }
+    }
+    
+    return distribution;
+  } catch (error) {
+    console.error('Failed to get dynamic category distribution, using fallback:', error);
+    // Fallback to hardcoded distribution
+    return ASSIGNMENT_CONFIG.CATEGORY_DISTRIBUTION;
+  }
+}
 
 // Scoring criteria
 export const SCORING_CRITERIA = {
@@ -99,7 +138,7 @@ export const USER_RESPONSE_TEMPLATE = {
   ai_feedback: ''
 };
 
-// Sample prompts for Grok API
+// Sample prompts for Grok API - Updated for Dynamic Categories
 export const GROK_PROMPTS = {
   GENERATE_QUESTIONS: `You are an expert educational content creator. Generate exactly {count} unique {category} questions at {difficulty} difficulty level.
 
@@ -115,13 +154,15 @@ QUESTION SPECIFICATIONS:
 - Count: {count}
 
 CONTENT GUIDELINES:
-- Coding: Focus on algorithms, data structures, programming concepts
-- Logic: Test reasoning, pattern recognition, logical deduction
-- Mathematics: Real-world applications, problem-solving
-- Language: Grammar, comprehension, communication skills
-- Culture: Global awareness, traditions, diversity
-- Vedic Knowledge: Ancient wisdom with modern relevance
-- Current Affairs: Recent events, global developments
+- Adapt to the category provided (not limited to predefined categories)
+- For programming/coding: Focus on algorithms, data structures, programming concepts
+- For logic/reasoning: Test reasoning, pattern recognition, logical deduction
+- For mathematics: Real-world applications, problem-solving
+- For language: Grammar, comprehension, communication skills
+- For culture: Global awareness, traditions, diversity
+- For traditional knowledge: Ancient wisdom with modern relevance
+- For current events: Recent events, global developments
+- For other categories: Adapt content to match the category theme
 
 JSON FORMAT (return exactly this structure):
 [
@@ -130,7 +171,7 @@ JSON FORMAT (return exactly this structure):
     "options": ["A) First option", "B) Second option", "C) Third option", "D) Fourth option"],
     "correct_answer": "A) First option",
     "explanation": "Brief explanation of correct answer",
-    "vedic_connection": "Vedic relevance (if applicable, otherwise empty string)",
+    "vedic_connection": "Traditional knowledge relevance (if applicable, otherwise empty string)",
     "modern_application": "Modern relevance (if applicable, otherwise empty string)"
   }
 ]

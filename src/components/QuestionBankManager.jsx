@@ -1,18 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { BookOpen, Brain, Calculator, Code, Globe, Newspaper, Scroll, Plus, Edit2, Trash2, Search, Users, Tag, Filter, Settings, Info } from 'lucide-react';
+import { BookOpen, Brain, Calculator, Code, Globe, Newspaper, Scroll, Plus, Edit2, Trash2, Search, Users, Tag, Filter, Settings, Info, MessageCircle, HelpCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { ASSIGNMENT_CATEGORIES, DIFFICULTY_LEVELS } from '../data/assignment.js';
+import { DIFFICULTY_LEVELS } from '../data/assignment.js';
 import { supabase } from '../lib/supabaseClient';
+import { DynamicQuestionCategoryService } from '../lib/dynamicQuestionCategoryService';
 
-const CATEGORY_ICONS = {
-  [ASSIGNMENT_CATEGORIES.CODING]: Code,
-  [ASSIGNMENT_CATEGORIES.LOGIC]: Brain,
-  [ASSIGNMENT_CATEGORIES.MATHEMATICS]: Calculator,
-  [ASSIGNMENT_CATEGORIES.LANGUAGE]: BookOpen,
-  [ASSIGNMENT_CATEGORIES.CULTURE]: Globe,
-  [ASSIGNMENT_CATEGORIES.VEDIC_KNOWLEDGE]: Scroll,
-  [ASSIGNMENT_CATEGORIES.CURRENT_AFFAIRS]: Newspaper
+// Icon mapping for question categories (supports dynamic categories)
+const DEFAULT_CATEGORY_ICONS = {
+  Code,
+  Brain,
+  Calculator,
+  BookOpen,
+  Globe,
+  Scroll,
+  Newspaper,
+  MessageCircle,
+  HelpCircle
+};
+
+// Helper function to get icon component by name
+const getIconComponent = (iconName, category) => {
+  if (iconName && DEFAULT_CATEGORY_ICONS[iconName]) {
+    return DEFAULT_CATEGORY_ICONS[iconName];
+  }
+  // Fallback to category-based mapping for backward compatibility
+  const legacyIcons = {
+    'Coding': Code,
+    'Logic': Brain,
+    'Mathematics': Calculator,
+    'Language': MessageCircle,
+    'Culture': Globe,
+    'Vedic Knowledge': Scroll,
+    'Current Affairs': Newspaper
+  };
+  return legacyIcons[category] || BookOpen;
 };
 
 const DIFFICULTY_COLORS = {
@@ -36,8 +58,8 @@ const FIELD_COLORS = [
 
 const DEFAULT_EMOJIS = ['🔬', '💼', '🏛️', '⚕️', '🎨', '📚', '🌟', '🚀', '💡', '🎯', '🔥', '⭐', '🌈', '🎪', '🎭'];
 
-function QuestionCard({ question, questionFields, studyFields, onEdit, onDelete, onManageFields, aiEnabled }) {
-  const IconComponent = CATEGORY_ICONS[question.category] || BookOpen;
+function QuestionCard({ question, questionFields, studyFields, onEdit, onDelete, onManageFields, aiEnabled, categories }) {
+  const IconComponent = getIconComponent(categories?.find(cat => cat.name === question.category)?.icon, question.category);
   const difficultyClass = DIFFICULTY_COLORS[question.difficulty] || DIFFICULTY_COLORS[DIFFICULTY_LEVELS.EASY];
   const isAiQuestion = question.created_by === 'ai';
 
@@ -150,6 +172,7 @@ function QuestionCard({ question, questionFields, studyFields, onEdit, onDelete,
 export default function QuestionBankManager() {
   const [questions, setQuestions] = useState([]);
   const [studyFields, setStudyFields] = useState([]);
+  const [questionCategories, setQuestionCategories] = useState([]);
   const [questionFieldMappings, setQuestionFieldMappings] = useState({});
   const [filteredQuestions, setFilteredQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -173,12 +196,26 @@ export default function QuestionBankManager() {
     loadStudyFields();
     loadQuestions();
     loadQuestionFieldMappings();
+    loadQuestionCategories();
   }, []);
 
   useEffect(() => {
     filterQuestions();
     calculateStats();
-  }, [questions, questionFieldMappings, studyFields, searchTerm, selectedCategory, selectedDifficulty, selectedField, aiEnabled]); // Added aiEnabled to dependency array
+  }, [questions, questionFieldMappings, studyFields, questionCategories, searchTerm, selectedCategory, selectedDifficulty, selectedField, aiEnabled]); // Added questionCategories to dependency array
+
+  async function loadQuestionCategories() {
+    try {
+      const categories = await DynamicQuestionCategoryService.getAllCategories();
+      setQuestionCategories(categories);
+      console.log('Question categories loaded:', categories);
+    } catch (error) {
+      console.error('Error loading question categories:', error);
+      toast.error('Failed to load question categories');
+      // Fallback to empty array - the service will handle fallback categories internally
+      setQuestionCategories([]);
+    }
+  }
 
   async function loadQuestions() {
     setLoading(true);
@@ -417,8 +454,10 @@ export default function QuestionBankManager() {
 
   function calculateStats() {
     const newStats = {};
-    Object.values(ASSIGNMENT_CATEGORIES).forEach(category => {
-      newStats[category] = { total: 0, easy: 0, medium: 0, hard: 0 };
+    
+    // Initialize stats for dynamic categories
+    questionCategories.forEach(category => {
+      newStats[category.name] = { total: 0, easy: 0, medium: 0, hard: 0 };
     });
     
     // Add field stats
@@ -938,20 +977,21 @@ export default function QuestionBankManager() {
 
       {/* Category Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {Object.entries(stats).filter(([key]) => !key.startsWith('field_')).map(([category, data]) => {
-          const aiQuestions = questions.filter(q => q.created_by === 'ai' && q.category === category).length;
-          const _adminQuestions = data.total - aiQuestions;
-          const IconComponent = CATEGORY_ICONS[category] || BookOpen;
+        {questionCategories.map(category => {
+          const data = stats[category.name] || { total: 0, easy: 0, medium: 0, hard: 0 };
+          const aiQuestions = questions.filter(q => q.created_by === 'ai' && q.category === category.name).length;
+          const adminQuestions = data.total - aiQuestions;
+          const IconComponent = getIconComponent(category.icon, category.name);
           
           return (
-            <div key={category} className="rounded-xl border border-white/20 bg-white/10 p-4">
+            <div key={category.category_id} className="rounded-xl border border-white/20 bg-white/10 p-4">
               <div className="flex items-center gap-2 mb-2">
                 <IconComponent className="h-5 w-5 text-orange-400" />
-                <span className="text-sm font-medium text-white">{category}</span>
+                <span className="text-sm font-medium text-white">{category.name}</span>
               </div>
               <div className="text-2xl font-bold text-white mb-1">{data.total}</div>
               <div className="text-xs text-white/60">
-                Admin: {_adminQuestions} | AI: {aiQuestions}
+                Admin: {adminQuestions} | AI: {aiQuestions}
               </div>
               
               {/* Show AI disabled indicator if AI is off */}
@@ -980,9 +1020,9 @@ export default function QuestionBankManager() {
           className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white"
         >
           <option value="">All Categories</option>
-          {Object.values(ASSIGNMENT_CATEGORIES).map(category => (
-            <option key={category} value={category}>
-              {category}
+          {questionCategories.map(category => (
+            <option key={category.category_id} value={category.name}>
+              {category.name}
             </option>
           ))}
         </select>
@@ -1026,6 +1066,7 @@ export default function QuestionBankManager() {
               onDelete={handleDeleteQuestion}
               onManageFields={handleManageFields}
               aiEnabled={aiEnabled}
+              categories={questionCategories}
             />
           );
         })}
@@ -1440,13 +1481,14 @@ export default function QuestionBankManager() {
                   style={{ width: '100%', padding: '0.75rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: 'white' }}
                 >
                   <option value="" style={{ background: '#1f2937', color: 'white' }}>Select a category...</option>
-                  <option value="Coding">💻 Coding</option>
-                  <option value="Logic">🧠 Logic</option>
-                  <option value="Mathematics">🔢 Mathematics</option>
-                  <option value="Language">📚 Language</option>
-                  <option value="Culture">🌍 Culture</option>
-                  <option value="Vedic Knowledge">📜 Vedic Knowledge</option>
-                  <option value="Current Affairs">📰 Current Affairs</option>
+                  {questionCategories.map(category => {
+                    const IconComponent = getIconComponent(category.icon, category.name);
+                    return (
+                      <option key={category.category_id} value={category.name} style={{ background: '#1f2937', color: 'white' }}>
+                        {category.name}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div>

@@ -6,6 +6,8 @@ import FormBuilder from "../components/FormBuilder";
 import QuestionBankManager from "../components/QuestionBankManager";
 import StudentAnalytics from "../components/StudentAnalytics";
 import DatabaseTest from "../components/DatabaseTest";
+import CategoryManager from "../components/CategoryManager";
+import QuestionCategoryManager from "../components/QuestionCategoryManager";
 import { adminAuth } from "../config/admin";
 import { FormConfigService } from "../lib/formConfigService";
 import { supabase, SUPABASE_TABLE } from "../lib/supabaseClient";
@@ -601,6 +603,26 @@ export default function Admin() {
             }`}
           >
             Question Banks
+          </button>
+          <button
+            onClick={() => setActiveTab("categories")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "categories"
+                ? "border-orange-500 text-orange-400"
+                : "border-transparent text-white/70 hover:text-white"
+            }`}
+          >
+            Form Categories
+          </button>
+          <button
+            onClick={() => setActiveTab("question-categories")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "question-categories"
+                ? "border-orange-500 text-orange-400"
+                : "border-transparent text-white/70 hover:text-white"
+            }`}
+          >
+            Question Categories
           </button>
           <button
             onClick={() => setActiveTab("database-test")}
@@ -1351,6 +1373,20 @@ export default function Admin() {
       {activeTab === "question-banks" && (
         <div className="card">
           <QuestionBankManager />
+        </div>
+      )}
+
+      {/* Categories Tab */}
+      {activeTab === "categories" && (
+        <div className="card">
+          <CategoryManager />
+        </div>
+      )}
+
+      {/* Question Categories Tab */}
+      {activeTab === "question-categories" && (
+        <div className="card">
+          <QuestionCategoryManager />
         </div>
       )}
 

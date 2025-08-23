@@ -4,8 +4,10 @@ import {
   API_ERROR_MESSAGES,
   ASSIGNMENT_CONFIG,
   DIFFICULTY_LEVELS,
-  GROK_PROMPTS
+  GROK_PROMPTS,
+  getDynamicCategoryDistribution
 } from '../data/assignment.js';
+import { DynamicQuestionCategoryService } from './dynamicQuestionCategoryService.js';
 
 const GROK_API_BASE_URL = 'https://api.groq.com/openai/v1';
 const GROK_API_KEY = import.meta.env.VITE_GROK_API_KEY;
@@ -107,7 +109,7 @@ class GrokService {
           const errorData = await response.json();
           errorDetails = JSON.stringify(errorData, null, 2);
           console.error('❌ Groq API Error Response:', errorData);
-        } catch (e) {
+        } catch {
           const errorText = await response.text();
           errorDetails = errorText;
           console.error('❌ Groq API Error Text:', errorText);
@@ -295,19 +297,23 @@ class GrokService {
   async generateFullAssignment(progressCallback = null) {
     const allQuestions = [];
     const usedQuestionTexts = new Set(); // Track used questions to prevent duplicates
-    const totalCategories = Object.keys(ASSIGNMENT_CONFIG.CATEGORY_DISTRIBUTION).length;
-    let completedCategories = 0;
-
+    
     try {
-      console.log('🚀 Starting assignment generation with Groq API...');
-      console.log(`📊 Will generate ${ASSIGNMENT_CONFIG.TOTAL_QUESTIONS} questions across ${totalCategories} categories`);
+      console.log('🚀 Starting assignment generation with dynamic categories...');
+      
+      // Get dynamic category distribution
+      const categoryDistribution = await getDynamicCategoryDistribution(ASSIGNMENT_CONFIG.TOTAL_QUESTIONS);
+      const totalCategories = Object.keys(categoryDistribution).length;
+      let completedCategories = 0;
+      
+      console.log(`📊 Will generate ${ASSIGNMENT_CONFIG.TOTAL_QUESTIONS} questions across ${totalCategories} dynamic categories:`, categoryDistribution);
 
       if (progressCallback) {
         progressCallback(`Starting generation of ${ASSIGNMENT_CONFIG.TOTAL_QUESTIONS} questions...`, 0);
       }
 
-      // Generate questions for each category according to distribution
-      for (const [category, count] of Object.entries(ASSIGNMENT_CONFIG.CATEGORY_DISTRIBUTION)) {
+      // Generate questions for each category according to dynamic distribution
+      for (const [category, count] of Object.entries(categoryDistribution)) {
         console.log(`\n📚 === Generating ${count} questions for ${category} ===`);
 
         if (progressCallback) {
@@ -323,11 +329,9 @@ class GrokService {
 
         // Adjust distribution for categories with 2 questions
         if (count === 2) {
-          easyCount = 0;
           mediumCount = 1;
           hardCount = 1;
         } else if (count === 1) {
-          easyCount = 0;
           mediumCount = 1;
           hardCount = 0;
         }
@@ -393,7 +397,7 @@ class GrokService {
       // Shuffle questions to randomize order
       const shuffledQuestions = this.shuffleArray(allQuestions);
 
-      console.log('🎉 Assignment generation completed successfully');
+      console.log('🎉 Assignment generation completed successfully with dynamic categories');
 
       if (progressCallback) {
         progressCallback('Assignment generation completed!', 100);
@@ -402,15 +406,93 @@ class GrokService {
       return {
         id: `assignment_${Date.now()}`,
         title: 'Multidisciplinary Assessment',
-        description: 'A comprehensive assessment covering coding, logic, mathematics, language, culture, Vedic knowledge, and current affairs.',
+        description: 'A comprehensive assessment covering dynamic question categories based on current system configuration.',
         questions: shuffledQuestions.slice(0, ASSIGNMENT_CONFIG.TOTAL_QUESTIONS),
         time_limit_minutes: ASSIGNMENT_CONFIG.TIME_LIMIT_MINUTES,
         created_at: new Date().toISOString()
       };
     } catch (error) {
       console.error('💥 Failed to generate full assignment:', error);
+      
+      // Fallback to hardcoded distribution if dynamic fails
+      if (error.message.includes('dynamic category distribution')) {
+        console.log('⚠️ Falling back to hardcoded category distribution...');
+        return this.generateFullAssignmentFallback(progressCallback);
+      }
+      
       throw new Error(`Assignment generation failed: ${error.message}`);
     }
+  }
+
+  /**
+   * Fallback method using hardcoded categories if dynamic system fails
+   */
+  async generateFullAssignmentFallback(progressCallback = null) {
+    const allQuestions = [];
+    const usedQuestionTexts = new Set();
+    const totalCategories = Object.keys(ASSIGNMENT_CONFIG.CATEGORY_DISTRIBUTION).length;
+    let completedCategories = 0;
+
+    console.log('🔄 Using fallback category distribution...');
+
+    // Use hardcoded distribution as fallback
+    for (const [category, count] of Object.entries(ASSIGNMENT_CONFIG.CATEGORY_DISTRIBUTION)) {
+      console.log(`\n📚 === Generating ${count} questions for ${category} (fallback) ===`);
+
+      if (progressCallback) {
+        progressCallback(`Generating ${category} questions (${completedCategories + 1}/${totalCategories})...`,
+                       (completedCategories / totalCategories) * 100);
+      }
+
+      // Simplified difficulty distribution for fallback
+      let mediumCount = count;
+      let hardCount = 0;
+
+      if (count === 2) {
+        mediumCount = 1;
+        hardCount = 1;
+      } else if (count === 1) {
+        mediumCount = 1;
+        hardCount = 0;
+      }
+
+      try {
+        if (mediumCount > 0) {
+          const mediumQuestions = await this.generateUniqueQuestions(
+            category, DIFFICULTY_LEVELS.MEDIUM, mediumCount, usedQuestionTexts
+          );
+          allQuestions.push(...mediumQuestions);
+        }
+
+        if (hardCount > 0) {
+          const hardQuestions = await this.generateUniqueQuestions(
+            category, DIFFICULTY_LEVELS.HARD, hardCount, usedQuestionTexts
+          );
+          allQuestions.push(...hardQuestions);
+        }
+
+        completedCategories++;
+        console.log(`✅ Completed ${category} fallback (${completedCategories}/${totalCategories})`);
+
+        if (completedCategories < totalCategories) {
+          await new Promise(resolve => setTimeout(resolve, 4000));
+        }
+      } catch (error) {
+        console.error(`❌ Failed to generate fallback questions for ${category}:`, error);
+        completedCategories++;
+      }
+    }
+
+    const shuffledQuestions = this.shuffleArray(allQuestions);
+
+    return {
+      id: `assignment_${Date.now()}`,
+      title: 'Multidisciplinary Assessment (Fallback)',
+      description: 'A comprehensive assessment using fallback category configuration.',
+      questions: shuffledQuestions.slice(0, ASSIGNMENT_CONFIG.TOTAL_QUESTIONS),
+      time_limit_minutes: ASSIGNMENT_CONFIG.TIME_LIMIT_MINUTES,
+      created_at: new Date().toISOString()
+    };
   }
 
   async evaluateResponse(question, userAnswer, userExplanation) {

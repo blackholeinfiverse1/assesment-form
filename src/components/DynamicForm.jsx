@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { FIELD_TYPES } from "../lib/formConfigService";
-import { GraduationCap, BookOpen, Target, User, Settings, Loader } from 'lucide-react';
+import { GraduationCap, BookOpen, Target, User, Settings, Loader, FileText, Heart, Star, Shield, Clock, Calendar, Camera, Music, Palette, Code, Database, Globe, Mail, Phone, Home } from 'lucide-react';
 import { DynamicFieldService } from '../lib/dynamicFieldService';
+import { DynamicCategoryService } from '../lib/dynamicCategoryService';
 
 // Section header icons
 const SECTION_ICONS = {
@@ -351,19 +352,24 @@ const SectionHeader = ({ section, sections }) => {
   const sectionConfig = sections?.[section];
   if (!sectionConfig) return null;
   
+  // Dynamic icon mapping for all Lucide icons
   const IconComponent = {
-    GraduationCap,
-    BookOpen,
-    Target,
-    User,
-    Settings
+    GraduationCap, BookOpen, Target, User, Settings, FileText, Heart, Star, 
+    Shield, Clock, Calendar, Camera, Music, Palette, Code, Database, 
+    Globe, Mail, Phone, Home
   }[sectionConfig.icon] || BookOpen;
+  
+  // Extract color classes from sectionConfig.color if available
+  const colorClasses = sectionConfig.color || 'text-orange-400 bg-orange-500/20';
+  const [textColor, bgColor] = colorClasses.split(' ').filter(cls => 
+    cls.startsWith('text-') || cls.startsWith('bg-')
+  );
   
   return (
     <div className="mb-6 pb-4 border-b border-white/20">
       <div className="flex items-center gap-3 mb-2">
-        <div className="p-2 bg-orange-500/20 rounded-lg">
-          <IconComponent className="w-5 h-5 text-orange-400" />
+        <div className={`p-2 rounded-lg ${bgColor || 'bg-orange-500/20'}`}>
+          <IconComponent className={`w-5 h-5 ${textColor || 'text-orange-400'}`} />
         </div>
         <h3 className="text-xl font-semibold text-white">{sectionConfig.title}</h3>
       </div>
@@ -396,6 +402,7 @@ export default function DynamicForm({
   const [loadingStudyFields, setLoadingStudyFields] = useState(false);
   const [studyFieldOptions, setStudyFieldOptions] = useState([]);
   const [errors, setErrors] = useState({});
+  const [categoryOrder, setCategoryOrder] = useState([]);
   
   // Load dynamic study fields for field_of_study field
   useEffect(() => {
@@ -431,6 +438,25 @@ export default function DynamicForm({
       loadStudyFields();
     }
   }, [config.fields]);
+  
+  // Load dynamic category order
+  useEffect(() => {
+    const loadCategoryOrder = async () => {
+      try {
+        const categories = await DynamicCategoryService.getAllCategories();
+        const order = categories
+          .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+          .map(cat => cat.category_id);
+        setCategoryOrder(order);
+      } catch (error) {
+        console.error('Error loading category order:', error);
+        // Fallback to default order
+        setCategoryOrder(['background_selection', 'personal_info', 'academic_info', 'preferences', 'general']);
+      }
+    };
+    
+    loadCategoryOrder();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -539,9 +565,12 @@ export default function DynamicForm({
     return acc;
   }, {});
   
-  // Define section order
-  const sectionOrder = ['background_selection', 'personal_info', 'academic_info', 'preferences', 'general'];
-  const orderedSections = sectionOrder.filter(section => fieldsBySection[section]);
+  // Use dynamic category order, falling back to sections that exist in fields
+  const allSectionsInFields = Object.keys(fieldsBySection);
+  const orderedSections = [
+    ...categoryOrder.filter(section => fieldsBySection[section]),
+    ...allSectionsInFields.filter(section => !categoryOrder.includes(section))
+  ];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">

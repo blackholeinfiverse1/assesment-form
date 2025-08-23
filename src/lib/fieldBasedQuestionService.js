@@ -1,10 +1,11 @@
 // Field-based question service to replace AI generation
 
-import { ASSIGNMENT_CATEGORIES, ASSIGNMENT_CONFIG, DIFFICULTY_LEVELS } from '../data/assignment.js';
+import { ASSIGNMENT_CONFIG, DIFFICULTY_LEVELS } from '../data/assignment.js';
 import { QUESTION_BANKS, getQuestionsByCategoryAndDifficulty } from '../data/questionBanks.js';
 import { STUDY_FIELDS, getQuestionWeightsForField, getDifficultyDistributionForField, detectStudyFieldFromBackground } from '../data/studyFields.js';
 import { supabase } from './supabaseClient.js';
 import { grokService } from './grokService.js';
+import { DynamicQuestionCategoryService } from './dynamicQuestionCategoryService.js';
 
 class FieldBasedQuestionService {
   constructor() {

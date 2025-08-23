@@ -1,23 +1,48 @@
-import { AlertCircle, BookOpen, Brain, Calculator, Clock, Code, Globe, Newspaper, Scroll } from 'lucide-react';
+import { AlertCircle, BookOpen, Brain, Calculator, Clock, Code, Globe, Newspaper, Scroll, MessageCircle, HelpCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { ASSIGNMENT_CATEGORIES, ASSIGNMENT_CONFIG } from '../data/assignment';
+import { ASSIGNMENT_CONFIG } from '../data/assignment';
 import { fieldBasedQuestionService } from '../lib/fieldBasedQuestionService';
 import { supabase, SUPABASE_TABLE } from '../lib/supabaseClient';
 import { backgroundSelectionService } from '../lib/backgroundSelectionService';
+import { DynamicQuestionCategoryService } from '../lib/dynamicQuestionCategoryService';
 
-const CATEGORY_ICONS = {
-  [ASSIGNMENT_CATEGORIES.CODING]: Code,
-  [ASSIGNMENT_CATEGORIES.LOGIC]: Brain,
-  [ASSIGNMENT_CATEGORIES.MATHEMATICS]: Calculator,
-  [ASSIGNMENT_CATEGORIES.LANGUAGE]: BookOpen,
-  [ASSIGNMENT_CATEGORIES.CULTURE]: Globe,
-  [ASSIGNMENT_CATEGORIES.VEDIC_KNOWLEDGE]: Scroll,
-  [ASSIGNMENT_CATEGORIES.CURRENT_AFFAIRS]: Newspaper
+// Icon mapping for question categories (supports dynamic categories)
+const DEFAULT_CATEGORY_ICONS = {
+  Code,
+  Brain,
+  Calculator,
+  BookOpen,
+  Globe,
+  Scroll,
+  Newspaper,
+  MessageCircle,
+  HelpCircle
 };
 
-function QuestionCard({ question, questionNumber, userAnswer, onAnswerChange, onExplanationChange, userExplanation }) {
-  const IconComponent = CATEGORY_ICONS[question.category] || BookOpen;
+// Helper function to get icon component by name
+const getIconComponent = (iconName, category) => {
+  if (iconName && DEFAULT_CATEGORY_ICONS[iconName]) {
+    return DEFAULT_CATEGORY_ICONS[iconName];
+  }
+  // Fallback to category-based mapping for backward compatibility
+  const legacyIcons = {
+    'Coding': Code,
+    'Logic': Brain,
+    'Mathematics': Calculator,
+    'Language': MessageCircle,
+    'Culture': Globe,
+    'Vedic Knowledge': Scroll,
+    'Current Affairs': Newspaper
+  };
+  return legacyIcons[category] || BookOpen;
+};
+
+function QuestionCard({ question, questionNumber, userAnswer, onAnswerChange, onExplanationChange, userExplanation, categories }) {
+  const IconComponent = getIconComponent(
+    categories?.find(cat => cat.name === question.category)?.icon,
+    question.category
+  );
 
   return (
     <div className="rounded-xl border border-white/20 bg-white/10 p-4 sm:p-6 space-y-4">
@@ -151,6 +176,7 @@ function ProgressIndicator({ currentQuestion, totalQuestions, answeredQuestions 
 
 export default function Assignment({ onComplete, userId = null, userEmail = null }) {
   const [assignment, setAssignment] = useState(null);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -161,10 +187,26 @@ export default function Assignment({ onComplete, userId = null, userEmail = null
   const [startTime, setStartTime] = useState(null);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
 
-  // Load assignment on component mount
+  // Load categories and assignment on component mount
   useEffect(() => {
-    loadAssignment();
+    loadCategoriesAndAssignment();
   }, []);
+
+  const loadCategoriesAndAssignment = async () => {
+    try {
+      // Load dynamic categories first
+      const categoryList = await DynamicQuestionCategoryService.getAllCategories();
+      setCategories(categoryList);
+      console.log('📚 Loaded question categories:', categoryList);
+      
+      // Then load assignment
+      await loadAssignment();
+    } catch (error) {
+      console.error('Error loading categories and assignment:', error);
+      // Continue with assignment loading even if categories fail
+      await loadAssignment();
+    }
+  };
 
   // Timer effect
   useEffect(() => {
@@ -472,6 +514,7 @@ export default function Assignment({ onComplete, userId = null, userEmail = null
         userExplanation={userExplanations[currentQuestion.id]}
         onAnswerChange={handleAnswerChange}
         onExplanationChange={handleExplanationChange}
+        categories={categories}
       />
 
       {/* Navigation */}

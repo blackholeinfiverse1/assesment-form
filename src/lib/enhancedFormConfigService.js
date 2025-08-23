@@ -1,5 +1,6 @@
 import { FIELD_TYPES } from "./formConfigService";
 import { DynamicFieldService } from './dynamicFieldService';
+import { DynamicCategoryService } from './dynamicCategoryService';
 
 // Background selection field configurations that can be included at the start of any form
 export const BACKGROUND_SELECTION_FIELDS = {
@@ -167,64 +168,96 @@ export class EnhancedFormConfigService {
     return {
       ...baseConfig,
       fields: uniqueFields,
-      sections: this.organizeSections(uniqueFields),
+      sections: await this.organizeSections(uniqueFields),
       hasBackgroundSelection: includeBackground
     };
   }
 
   /**
-   * Organize fields into sections for better form structure
+   * Organize fields into sections for better form structure using dynamic categories
    * @param {Array} fields - Array of field configurations
    * @returns {Object} Organized sections
    */
-  static organizeSections(fields) {
-    const sections = {
-      background_selection: {
-        title: "Background Selection",
-        description: "Tell us about your academic background and goals",
-        icon: "GraduationCap",
-        order: -3
-      },
-      personal_info: {
-        title: "Personal Information",
-        description: "Basic information about you",
-        icon: "User",
-        order: 0
-      },
-      academic_info: {
-        title: "Academic Details",
-        description: "Your educational background and preferences",
-        icon: "BookOpen",
-        order: 1
-      },
-      preferences: {
-        title: "Learning Preferences",
-        description: "How you prefer to learn",
-        icon: "Settings",
-        order: 2
-      },
-      general: {
-        title: "Additional Information",
-        description: "Other relevant details",
-        icon: "Settings",
-        order: 3
+  static async organizeSections(fields) {
+    try {
+      // Get dynamic categories from the service
+      const sections = await DynamicCategoryService.getOrganizedSections();
+      
+      // Ensure all field sections have corresponding categories
+      for (const field of fields) {
+        const sectionName = field.section || 'general';
+        if (!sections[sectionName]) {
+          // Create dynamic category if it doesn't exist
+          const newCategory = await DynamicCategoryService.ensureCategoryExists(sectionName, {
+            name: sectionName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            description: `Section for ${sectionName} fields`,
+            icon: "Settings",
+            order: 10
+          });
+          
+          sections[sectionName] = {
+            title: newCategory.name,
+            description: newCategory.description,
+            icon: newCategory.icon,
+            order: newCategory.display_order,
+            color: newCategory.color
+          };
+        }
       }
-    };
-    
-    fields.forEach(field => {
-      const sectionName = field.section || 'general';
-      if (!sections[sectionName] && sectionName !== 'general') {
-        // Create a dynamic section if it doesn't exist
-        sections[sectionName] = {
-          title: sectionName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-          description: `Section for ${sectionName} fields`,
+      
+      return sections;
+    } catch (error) {
+      console.error('Error loading dynamic categories, falling back to default:', error);
+      
+      // Fallback to basic sections if dynamic categories fail
+      const fallbackSections = {
+        background_selection: {
+          title: "Background Selection",
+          description: "Tell us about your academic background and goals",
+          icon: "GraduationCap",
+          order: -3
+        },
+        personal_info: {
+          title: "Personal Information",
+          description: "Basic information about you",
+          icon: "User",
+          order: 0
+        },
+        academic_info: {
+          title: "Academic Details",
+          description: "Your educational background and preferences",
+          icon: "BookOpen",
+          order: 1
+        },
+        preferences: {
+          title: "Learning Preferences",
+          description: "How you prefer to learn",
           icon: "Settings",
-          order: 10
-        };
-      }
-    });
-    
-    return sections;
+          order: 2
+        },
+        general: {
+          title: "Additional Information",
+          description: "Other relevant details",
+          icon: "FileText",
+          order: 3
+        }
+      };
+      
+      // Add any missing sections for fields
+      fields.forEach(field => {
+        const sectionName = field.section || 'general';
+        if (!fallbackSections[sectionName] && sectionName !== 'general') {
+          fallbackSections[sectionName] = {
+            title: sectionName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            description: `Section for ${sectionName} fields`,
+            icon: "Settings",
+            order: 10
+          };
+        }
+      });
+      
+      return fallbackSections;
+    }
   }
 
   /**
