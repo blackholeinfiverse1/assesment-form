@@ -6,6 +6,7 @@ import { STUDY_FIELDS, getQuestionWeightsForField, getDifficultyDistributionForF
 import { supabase } from './supabaseClient.js';
 import { grokService } from './grokService.js';
 import { DynamicQuestionCategoryService } from './dynamicQuestionCategoryService.js';
+import { aiSettingsService } from './aiSettingsService.js';
 
 class FieldBasedQuestionService {
   constructor() {
@@ -100,44 +101,89 @@ class FieldBasedQuestionService {
         }));
       }
 
-      // 2) Generate remaining with Grok for the same primary category
+      // Check if AI question generation is enabled globally
+      const isAIEnabled = await aiSettingsService.isAIEnabled();
+      console.log(`🤖 AI question generation is ${isAIEnabled ? 'enabled' : 'disabled'} globally`);
+
+      // 2) Generate remaining with AI only if enabled, otherwise use admin questions
       const remainingCount = Math.max(0, totalQuestions - adminQuestions.length);
-
-      // Build Set of normalized question texts to prevent duplicates
-      const normalizeText = (t) => (t || '')
-        .toLowerCase()
-        .replace(/[^\w\s]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-      const usedQuestionTexts = new Set(adminQuestions.map(q => normalizeText(q.question_text)));
-
-      const aiCounts = splitByDifficulty(remainingCount);
       const aiQuestions = [];
 
-      for (const [difficulty, count] of Object.entries(aiCounts)) {
-        if (count <= 0) continue;
-        try {
-          const aiQs = await grokService.generateUniqueQuestions(
-            primaryCategory,
-            difficulty,
-            count,
-            usedQuestionTexts
-          );
-          // Persist AI-generated questions for admin visibility and future reuse
-          await this.storeGeneratedQuestions(aiQs, studyField, primaryCategory, difficulty);
+      if (isAIEnabled && remainingCount > 0) {
+        // Build Set of normalized question texts to prevent duplicates
+        const normalizeText = (t) => (t || '')
+          .toLowerCase()
+          .replace(/[^\w\s]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const usedQuestionTexts = new Set(adminQuestions.map(q => normalizeText(q.question_text)));
 
-          aiQs.forEach(q => usedQuestionTexts.add(normalizeText(q.question_text)));
-          aiQuestions.push(...aiQs);
-        } catch (e) {
-          console.warn(`⚠️ Grok generation failed for ${primaryCategory} - ${difficulty}: ${e.message}. Falling back to curated bank.`);
-          // Fallback to curated question bank if AI fails
-          const fallback = await this.getQuestionsForCategoryAndDifficulty(primaryCategory, difficulty, count);
-          fallback.forEach(q => usedQuestionTexts.add(normalizeText(q.question_text)));
-          aiQuestions.push(...fallback);
+        const aiCounts = splitByDifficulty(remainingCount);
+
+        for (const [difficulty, count] of Object.entries(aiCounts)) {
+          if (count <= 0) continue;
+          try {
+            const aiQs = await grokService.generateUniqueQuestions(
+              primaryCategory,
+              difficulty,
+              count,
+              usedQuestionTexts
+            );
+            // Persist AI-generated questions for admin visibility and future reuse
+            await this.storeGeneratedQuestions(aiQs, studyField, primaryCategory, difficulty);
+
+            aiQs.forEach(q => usedQuestionTexts.add(normalizeText(q.question_text)));
+            aiQuestions.push(...aiQs);
+          } catch (e) {
+            console.warn(`⚠️ Grok generation failed for ${primaryCategory} - ${difficulty}: ${e.message}. Falling back to curated bank.`);
+            // Fallback to curated question bank if AI fails
+            const fallback = await this.getQuestionsForCategoryAndDifficulty(primaryCategory, difficulty, count);
+            fallback.forEach(q => usedQuestionTexts.add(normalizeText(q.question_text)));
+            aiQuestions.push(...fallback);
+          }
+        }
+      } else if (remainingCount > 0) {
+        // AI is disabled, fill remaining with admin questions
+        console.log(`🤖 AI disabled, filling remaining ${remainingCount} questions with admin questions`);
+        const normalizeText = (t) => (t || '')
+          .toLowerCase()
+          .replace(/[^\w\s]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const usedQuestionTexts = new Set(adminQuestions.map(q => normalizeText(q.question_text)));
+        
+        const remainingAdminCounts = splitByDifficulty(remainingCount);
+        
+        for (const [difficulty, count] of Object.entries(remainingAdminCounts)) {
+          if (count <= 0) continue;
+          try {
+            const adminQs = await this.getQuestionsForCategoryAndDifficulty(primaryCategory, difficulty, count);
+            // Filter out duplicates
+            const uniqueAdminQs = adminQs.filter(q => {
+              const normalizedText = normalizeText(q.question_text);
+              if (usedQuestionTexts.has(normalizedText)) {
+                return false;
+              }
+              usedQuestionTexts.add(normalizedText);
+              return true;
+            });
+            
+            // Map to expected structure with metadata
+            uniqueAdminQs.forEach(q => aiQuestions.push({
+              ...q,
+              category: primaryCategory,
+              difficulty,
+              type: 'multiple_choice',
+              points: q.points ?? 10,
+              time_limit_seconds: q.time_limit_seconds ?? 180
+            }));
+          } catch (e) {
+            console.warn(`⚠️ Failed to fetch admin questions for ${primaryCategory} - ${difficulty}: ${e.message}`);
+          }
         }
       }
 
-      // Combine: admin high-priority first, then AI-generated
+      // Combine: admin high-priority first, then AI-generated or additional admin
       let combined = [...adminQuestions, ...aiQuestions];
 
       // Top-up if still short using curated bank from the same primary category

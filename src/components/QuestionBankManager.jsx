@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { BookOpen, Brain, Calculator, Code, Globe, Newspaper, Scroll, Plus, Edit2, Trash2, Search, Users, Tag, Filter, Settings, Info, MessageCircle, HelpCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { DIFFICULTY_LEVELS } from '../data/assignment.js';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabaseClient';
+import { Plus, Settings, Search, Filter, Brain, Code, Calculator, MessageCircle, Globe, Scroll, Newspaper, BookOpen, HelpCircle, AlertCircle } from 'lucide-react';
+import QuestionForm from './QuestionForm';
+import FieldSettingsModal from './FieldSettingsModal';
 import { DynamicQuestionCategoryService } from '../lib/dynamicQuestionCategoryService';
+import { aiSettingsService } from '../lib/aiSettingsService';
 
 // Icon mapping for question categories (supports dynamic categories)
 const DEFAULT_CATEGORY_ICONS = {
@@ -189,8 +190,25 @@ export default function QuestionBankManager() {
   const [editingField, setEditingField] = useState(null);
   const [fieldDeleteConfirm, setFieldDeleteConfirm] = useState(null);
   const [stats, setStats] = useState({});
-  const [aiEnabled, setAiEnabled] = useState(true); // New state for AI toggle
+  const [aiEnabled, setAiEnabled] = useState(true); // This will be updated with global setting
   const [showTooltip, setShowTooltip] = useState(false); // Tooltip state
+
+  // Load AI settings on component mount
+  useEffect(() => {
+    const loadAISettings = async () => {
+      try {
+        const isEnabled = await aiSettingsService.isAIEnabled();
+        setAiEnabled(isEnabled);
+        console.log('🤖 AI Settings loaded in QuestionBankManager:', { aiEnabled: isEnabled });
+      } catch (error) {
+        console.error('Error loading AI settings:', error);
+        // Default to enabled on error
+        setAiEnabled(true);
+      }
+    };
+
+    loadAISettings();
+  }, []);
 
   useEffect(() => {
     loadStudyFields();
@@ -913,7 +931,7 @@ export default function QuestionBankManager() {
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 border border-white/20">
             <span className="text-sm text-white">AI Questions:</span>
             <button
-              onClick={() => setAiEnabled(!aiEnabled)}
+              onClick={toggleAIEnabled}
               className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
                 aiEnabled 
                   ? 'bg-orange-500 text-white hover:bg-orange-600' 
@@ -1119,7 +1137,7 @@ export default function QuestionBankManager() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span style={{ color: 'white', fontSize: '0.875rem' }}>Enable AI Generated Questions</span>
                   <button
-                    onClick={() => setAiEnabled(!aiEnabled)}
+                    onClick={toggleAIEnabled}
                     style={{
                       background: aiEnabled ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.1)',
                       border: '1px solid rgba(255,255,255,0.2)',
@@ -1152,6 +1170,268 @@ export default function QuestionBankManager() {
                         padding: '0.5rem 1rem',
                         color: 'rgba(255,255,255,0.85)',
                         marginTop: '0.5rem',
+                      }}
+                    >
+                      <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.875rem' }}>
+                        Enabling AI-generated questions allows the system to automatically create questions based on predefined templates and parameters. This can help in quickly expanding the question bank without manual input.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Field List */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h4 style={{ color: 'white', fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                Study Fields
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {studyFields.map(field => (
+                  <div key={field.field_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ color: 'white', fontSize: '0.875rem' }}>{field.name}</span>
+                      <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>{field.description}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        onClick={() => {
+                          setEditingField(field);
+                          setShowFieldSettings(true);
+                        }}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
+                          borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setFieldDeleteConfirm(field)}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
+                          borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Add/Edit Field Form */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h4 style={{ color: 'white', fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                {editingField ? 'Edit Field' : 'Add New Field'}
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <input
+                  type="text"
+                  id="field-name"
+                  placeholder="Field Name"
+                  defaultValue={editingField?.name || ''}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: 'rgba(255,255,255,0.85)',
+                    backgroundColor: 'rgba(255,255,255,0.1)'
+                  }}
+                />
+                <input
+                  type="text"
+                  id="field-icon"
+                  placeholder="Icon (e.g., 📚)"
+                  defaultValue={editingField?.icon || ''}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: 'rgba(255,255,255,0.85)',
+                    backgroundColor: 'rgba(255,255,255,0.1)'
+                  }}
+                />
+                <textarea
+                  id="field-description"
+                  placeholder="Description"
+                  defaultValue={editingField?.description || ''}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: 'rgba(255,255,255,0.85)',
+                    backgroundColor: 'rgba(255,255,255,0.1)'
+                  }}
+                />
+                <button
+                  onClick={saveFieldFromModal}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                  }}
+                >
+                  {editingField ? 'Update Field' : 'Add Field'}
+                </button>
+              </div>
+            </div>
+
+            {/* Delete Confirmation */}
+            {fieldDeleteConfirm && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h4 style={{ color: 'white', fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                  Confirm Deletion
+                </h4>
+                <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.875rem' }}>
+                  Are you sure you want to delete the field "{fieldDeleteConfirm.name}"? This action cannot be undone.
+                </p>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={deleteField}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                    }}
+                  >
+                    Delete
+                  </button>
+                  <button
+                    onClick={() => setFieldDeleteConfirm(null)}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Question Form */}
+      {showForm && createPortal(
+        <div 
+          style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0, left: 0,
+            background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)', 
+            zIndex: 10000000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'fadeIn 0.3s ease-out'
+          }}
+          onClick={() => setShowForm(false)}
+        >
+          <div 
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%)',
+              backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.25)',
+              borderRadius: '20px', padding: '2rem', maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <QuestionForm
+              question={editingQuestion}
+              studyFields={studyFields}
+              questionCategories={questionCategories}
+              onSave={saveQuestionFromModal}
+              onCancel={() => setShowForm(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Field Manager */}
+      {showFieldManager && createPortal(
+        <div 
+          style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0, left: 0,
+            background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)', 
+            zIndex: 10000000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'fadeIn 0.3s ease-out'
+          }}
+          onClick={() => setShowFieldManager(false)}
+        >
+          <div 
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%)',
+              backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.25)',
+              borderRadius: '20px', padding: '2rem', maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div>
+                <h3 style={{ color: 'white', fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Filter className="w-6 h-6" />
+                  Manage Fields for Question
+                </h3>
+                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>
+                  Assign study fields to the selected question
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowFieldManager(false)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Field List */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h4 style={{ color: 'white', fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                Study Fields
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {studyFields.map(field => (
+                  <div key={field.field_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ color: 'white', fontSize: '0.875rem' }}>{field.name}</span>
+                      <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>{field.description}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        type="checkbox"
+                        id={`field-manager-${field.field_id}`}
+                        defaultChecked={questionFieldMappings[managingQuestion?.question_id]?.includes(field.field_id) || false}
+                        style={{
+                          width: '1rem',
+                          height: '1rem',
+                          borderRadius: '4px',
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          backgroundColor: 'rgba(255,255,255,0.1)'
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <button
+                onClick={saveFieldMappings}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                }}
+              >
+                Save Assignments
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
                         maxWidth: '200px',
                         textAlign: 'center',
                         zIndex: 1000
