@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Grok AI Feedback</title>
+</head>
+<body>
+    <h1>Test Grok AI Feedback</h1>
+    <button id="testBtn">Test AI Feedback Generation</button>
+    <div id="result"></div>
+
+    <script>
+        // Test Grok API with your existing API key
+        const GROK_API_KEY = "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";
+        const GROK_API_BASE_URL = 'https://api.groq.com/openai/v1';
+
+        async function testGrokFeedback() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing Grok AI feedback...</p>';
+
+            try {
+                const prompt = `You are an expert educational advisor providing personalized feedback after a comprehensive assessment. Generate encouraging, specific, and actionable feedback.
+
+ASSESSMENT RESULTS:
+- Student Name: Test Student
+- Overall Score: 85.5% (85.5/100 points)
+- Total Questions: 10
+- Correct Answers: 8
+- Categories Tested: Coding, Logic, Mathematics
+
+CATEGORY PERFORMANCE:
+Coding: 90.0% (9.0/10 points)
+Logic: 75.0% (7.5/10 points)  
+Mathematics: 90.0% (9.0/10 points)
+
+STRONG AREAS:
+Coding, Mathematics
+
+IMPROVEMENT AREAS:
+Logic
+
+AVERAGE EXPLANATION QUALITY: 7.2/10
+
+GENERATE PERSONALIZED FEEDBACK:
+1. Start with the student's name and an encouraging opening
+2. Acknowledge their overall performance level
+3. Highlight specific strengths and strong categories
+4. Address areas for improvement with specific suggestions
+5. Comment on explanation quality and reasoning
+6. Provide motivational conclusion with next steps
+7. Keep tone positive, constructive, and encouraging
+8. Make it personal and specific to their performance
+
+Return ONLY a well-structured paragraph of feedback (no JSON, no special formatting).`;
+
+                const response = await fetch(`${GROK_API_BASE_URL}/chat/completions`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${GROK_API_KEY}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: 'llama3-8b-8192',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: 'You are an expert educational advisor and mentor. Provide personalized, encouraging, and actionable feedback that motivates students to improve while acknowledging their efforts and achievements.'
+                            },
+                            {
+                                role: 'user',
+                                content: prompt
+                            }
+                        ],
+                        max_tokens: 1500,
+                        temperature: 0.7,
+                    }),
+                });
+
+                console.log('Response status:', response.status);
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API Error: ${response.status} - ${JSON.stringify(errorData)}`);
+                }
+
+                const data = await response.json();
+                const feedback = data.choices[0]?.message?.content;
+
+                if (feedback) {
+                    resultDiv.innerHTML = `
+                        <h3>✅ AI Feedback Generated Successfully!</h3>
+                        <div style="background: #f0f0f0; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                            <strong>Generated Feedback:</strong><br>
+                            ${feedback}
+                        </div>
+                        <p><strong>Status:</strong> Your Grok AI is working correctly! 🎉</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = '<p>❌ No feedback content received from API</p>';
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <h3>❌ API Test Failed</h3>
+                    <p><strong>Error:</strong> ${error.message}</p>
+                    <p>This indicates why you're seeing hardcoded feedback instead of AI-generated feedback.</p>
+                `;
+            }
+        }
+
+        document.getElementById('testBtn').addEventListener('click', testGrokFeedback);
+    </script>
+</body>
+</html>

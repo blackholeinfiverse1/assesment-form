@@ -1,33 +1,62 @@
-# Study Fields Database Troubleshooting Guide
+# Field & Question Creation Troubleshooting Guide
 
-## Problem: Cannot add fields - Getting 400 errors
+## Problem: Cannot add fields or questions - Getting 400 errors
+
+### Root Cause:
+Both `study_fields` and `question_banks` tables have schema mismatches:
+- Missing required columns (`field_id`, `short_name`, `question_id`, etc.)
+- NULL constraint violations
+- Frontend expecting different structure than database
 
 ### Quick Fix Steps:
 
-#### Step 1: Run Diagnostic Script
+#### Step 1: Run Complete Database Setup
 1. Go to your Supabase dashboard
 2. Open SQL Editor
-3. Run the file: `src/sql/diagnostic_study_fields.sql`
-4. Check what columns are missing
+3. **Run the file: `src/sql/complete_study_fields_setup.sql`**
+4. This will recreate ALL tables with correct structure:
+   - ✅ `study_fields` table
+   - ✅ `question_banks` table 
+   - ✅ `question_field_mapping` table
+   - ✅ All required columns and constraints
+   - ✅ Default data inserted
 
-#### Step 2: Run Complete Setup Script
-1. In Supabase SQL Editor
-2. Run the file: `src/sql/complete_study_fields_setup.sql`
-3. This will:
-   - Drop and recreate the table with correct structure
-   - Insert default fields
-   - Set up proper permissions
+#### Step 2: Test Both Features
+1. **Refresh your application**
+2. **Test Field Creation:**
+   - Go to Admin → Question Bank Manager → "Manage Fields"
+   - Click "Add New Field"
+   - Fill: Name: "Test Field", Icon: "🧪", Description: "Test"
+   - Should see: "Field added" success message
 
-#### Step 3: Test the Fix
-1. Refresh your application
-2. Go to Admin → Question Bank Manager → "Manage Fields"
-3. Try adding a new field
+3. **Test Question Creation:**
+   - Click "Add Question" in Question Bank Manager
+   - Fill in all required fields (question text, category, difficulty, options)
+   - Should see: "Question added" success message
 
 ### Expected Results After Fix:
-- ✅ Database has all required columns
-- ✅ Default fields (STEM, Business, etc.) are loaded
-- ✅ You can add custom fields without errors
-- ✅ Console shows detailed logging of what's happening
+- ✅ No more 400 errors for fields or questions
+- ✅ 5 default study fields loaded (STEM, Business, etc.)
+- ✅ Both "Add Field" and "Add Question" work
+- ✅ Questions can be assigned to study fields
+- ✅ Console shows detailed logging
+
+### What's Been Fixed:
+
+#### Frontend Code Updates:
+- ✅ **Field creation**: Added required `question_id` generation
+- ✅ **Question creation**: Added all missing fields (`tags`, proper `explanation` handling)
+- ✅ **Smart fallback queries**: Handles missing columns gracefully
+- ✅ **Enhanced error messages**: Shows specific issues
+- ✅ **Better validation**: Prevents NULL constraint violations
+
+#### Database Schema Updates:
+- ✅ **study_fields**: All required columns added
+- ✅ **question_banks**: Fixed `question_id` constraint
+- ✅ **question_field_mapping**: Proper foreign keys
+- ✅ **Indexes**: Performance optimization
+- ✅ **RLS Policies**: Permissive for development
+- ✅ **Triggers**: Auto-update timestamps
 
 ### If You Still Get Errors:
 

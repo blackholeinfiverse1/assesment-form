@@ -157,7 +157,39 @@ IMPORTANT: Return ONLY the JSON object below with no additional text:
   "reasoning_score": [number 0-10],
   "feedback": "Brief constructive feedback about their response",
   "suggestions": "Specific suggestions for improvement"
-}`
+}`,
+
+  GENERATE_OVERALL_FEEDBACK: `You are an expert educational advisor providing personalized feedback after a comprehensive assessment. Generate encouraging, specific, and actionable feedback.
+
+ASSESSMENT RESULTS:
+- Student Name: {student_name}
+- Overall Score: {overall_percentage}% ({total_score}/{max_score} points)
+- Total Questions: {total_questions}
+- Correct Answers: {correct_answers}
+- Categories Tested: {categories}
+
+CATEGORY PERFORMANCE:
+{category_breakdown}
+
+STRONG AREAS:
+{strong_categories}
+
+IMPROVEMENT AREAS:
+{weak_categories}
+
+AVERAGE EXPLANATION QUALITY: {avg_explanation_score}/10
+
+GENERATE PERSONALIZED FEEDBACK:
+1. Start with the student's name and an encouraging opening
+2. Acknowledge their overall performance level
+3. Highlight specific strengths and strong categories
+4. Address areas for improvement with specific suggestions
+5. Comment on explanation quality and reasoning
+6. Provide motivational conclusion with next steps
+7. Keep tone positive, constructive, and encouraging
+8. Make it personal and specific to their performance
+
+Return ONLY a well-structured paragraph of feedback (no JSON, no special formatting).`
 };
 
 // Error messages for API failures

@@ -2,10 +2,12 @@
 
 import { ASSIGNMENT_CATEGORIES, SCORING_CRITERIA } from '../data/assignment.js';
 import { fieldBasedQuestionService } from './fieldBasedQuestionService.js';
+import { grokService } from './grokService.js';
 
 class ScoringService {
   constructor() {
     this.fieldBasedQuestionService = fieldBasedQuestionService;
+    this.grokService = grokService;
   }
 
   async evaluateAssignmentAttempt(attempt, userContext = null) {
@@ -299,7 +301,23 @@ class ScoringService {
 
   async generateOverallFeedback(evaluatedResponses, categoryScores, overallPercentage, userContext = null) {
     try {
-      // Generate feedback without AI - use rule-based approach
+      console.log('🎯 Attempting to generate AI-powered overall feedback...');
+      
+      // Try to use Grok AI for personalized feedback
+      const grokFeedback = await this.grokService.generateOverallFeedback(
+        evaluatedResponses,
+        categoryScores,
+        overallPercentage,
+        userContext
+      );
+      
+      console.log('✅ Successfully generated AI feedback:', grokFeedback);
+      return grokFeedback;
+      
+    } catch (error) {
+      console.error('❌ Failed to generate AI feedback, using fallback:', error);
+      
+      // Fallback to rule-based approach if Grok fails
       const totalQuestions = evaluatedResponses.length;
       const correctAnswers = evaluatedResponses.filter(r => r.is_correct).length;
       const accuracyRate = (correctAnswers / totalQuestions) * 100;
@@ -355,11 +373,8 @@ class ScoringService {
         feedback += "Use this assessment as a learning opportunity and practice regularly to build your skills.";
       }
       
+      console.log('🔄 Using fallback feedback:', feedback);
       return feedback;
-      
-    } catch (error) {
-      console.error('Error generating overall feedback:', error);
-      return this.getFallbackOverallFeedback(overallPercentage);
     }
   }
 

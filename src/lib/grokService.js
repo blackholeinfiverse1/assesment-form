@@ -483,6 +483,100 @@ class GrokService {
     }
   }
 
+  async generateOverallFeedback(evaluatedResponses, categoryScores, overallPercentage, userContext = null) {
+    try {
+      console.log('🎯 Generating overall feedback with Grok AI...');
+      
+      const totalQuestions = evaluatedResponses.length;
+      const correctAnswers = evaluatedResponses.filter(r => r.is_correct).length;
+      const totalScore = evaluatedResponses.reduce((sum, r) => sum + r.total_score, 0);
+      const maxScore = totalQuestions * 10; // Assuming 10 points per question
+      
+      // Prepare category performance breakdown
+      const categoryBreakdown = Object.entries(categoryScores)
+        .map(([category, data]) => `${category}: ${data.percentage.toFixed(1)}% (${data.total}/${data.max} points)`)
+        .join('\n');
+      
+      // Identify strong and weak categories
+      const strongCategories = Object.entries(categoryScores)
+        .filter(([, data]) => data.percentage >= 80)
+        .map(([category]) => category)
+        .join(', ') || 'None significantly above average';
+      
+      const weakCategories = Object.entries(categoryScores)
+        .filter(([, data]) => data.percentage < 60)
+        .map(([category]) => category)
+        .join(', ') || 'All areas show good performance';
+      
+      // Calculate average explanation score
+      const avgExplanationScore = evaluatedResponses.reduce((sum, r) => sum + r.explanation_score, 0) / totalQuestions;
+      
+      // Get categories tested
+      const categories = Object.keys(categoryScores).join(', ');
+      
+      const studentName = userContext?.name || 'Student';
+      
+      const prompt = GROK_PROMPTS.GENERATE_OVERALL_FEEDBACK
+        .replace('{student_name}', studentName)
+        .replace('{overall_percentage}', overallPercentage.toFixed(1))
+        .replace('{total_score}', totalScore.toFixed(1))
+        .replace('{max_score}', maxScore)
+        .replace('{total_questions}', totalQuestions)
+        .replace('{correct_answers}', correctAnswers)
+        .replace('{categories}', categories)
+        .replace('{category_breakdown}', categoryBreakdown)
+        .replace('{strong_categories}', strongCategories)
+        .replace('{weak_categories}', weakCategories)
+        .replace('{avg_explanation_score}', avgExplanationScore.toFixed(1));
+      
+      const messages = [
+        {
+          role: 'system',
+          content: 'You are an expert educational advisor and mentor. Provide personalized, encouraging, and actionable feedback that motivates students to improve while acknowledging their efforts and achievements.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ];
+      
+      console.log('📝 Sending feedback request to Grok with context:', {
+        student: studentName,
+        performance: `${overallPercentage.toFixed(1)}%`,
+        totalQuestions,
+        correctAnswers,
+        strongAreas: strongCategories,
+        improvementAreas: weakCategories
+      });
+      
+      const response = await this.makeApiCallWithRetry(messages, 1500);
+      
+      console.log('📄 Raw feedback response:', response);
+      
+      // Clean up the response - remove any extra formatting
+      const cleanFeedback = response
+        .replace(/^["']|["']$/g, '') // Remove leading/trailing quotes
+        .replace(/\\n/g, ' ') // Replace escaped newlines with spaces
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .trim();
+      
+      console.log('✅ Generated personalized feedback:', cleanFeedback);
+      
+      return cleanFeedback;
+      
+    } catch (error) {
+      console.error('💥 Failed to generate overall feedback with Grok:', error);
+      console.error('💥 Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
+      
+      // Return a fallback message that indicates the issue
+      const studentName = userContext?.name || 'Student';
+      return `Hello ${studentName}! Your assessment has been completed with ${overallPercentage.toFixed(1)}% overall performance. While we're experiencing technical difficulties generating personalized feedback, your results have been saved. Please review your individual question responses for detailed insights into your performance.`;
+    }
+  }
+
 
 
   shuffleArray(array) {

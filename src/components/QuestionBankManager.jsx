@@ -456,42 +456,73 @@ export default function QuestionBankManager() {
       const correct_answer = [optionA, optionB, optionC, optionD][correctIndex] || '';
       if (!correct_answer) return toast.error('Correct answer is empty');
 
+      // Generate question_id if creating new question
+      const question_id = editingQuestion?.question_id || 
+        `${category.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
       const payload = {
+        question_id, // This is required!
         question_text,
         options,
         correct_answer,
         category,
         difficulty,
-        explanation: explanation || null,
-        vedic_connection: vedic_connection || null,
-        modern_application: modern_application || null,
+        explanation: explanation || '',
+        vedic_connection: vedic_connection || '',
+        modern_application: modern_application || '',
+        tags: [],
         is_active: true,
         created_by: 'admin',
         updated_at: new Date().toISOString()
       };
 
-      let questionId;
+      console.log('Saving question with payload:', payload);
+
+      let questionIdResult = question_id;
       if (editingQuestion && editingQuestion.question_id) {
         // Update existing question
+        const updatePayload = { ...payload };
+        delete updatePayload.question_id; // Don't update the ID
+        
         const { error } = await supabase
           .from('question_banks')
-          .update(payload)
+          .update(updatePayload)
           .eq('question_id', editingQuestion.question_id);
-        if (error) throw error;
-        questionId = editingQuestion.question_id;
+        
+        if (error) {
+          console.error('Update error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw error;
+        }
+        questionIdResult = editingQuestion.question_id;
       } else {
-        // Insert new question
+        // Insert new question - add created_at for new records
+        payload.created_at = new Date().toISOString();
+        
         const { data, error } = await supabase
           .from('question_banks')
           .insert([payload])
           .select('question_id')
           .single();
-        if (error) throw error;
-        questionId = data.question_id;
+        
+        if (error) {
+          console.error('Insert error details:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code
+          });
+          throw error;
+        }
+        questionIdResult = data?.question_id || question_id;
       }
 
       // Update field mappings
-      await updateQuestionFieldMappings(questionId, selectedFields);
+      await updateQuestionFieldMappings(questionIdResult, selectedFields);
 
       toast.success(editingQuestion ? 'Question updated' : 'Question added');
       setShowForm(false);
@@ -500,7 +531,19 @@ export default function QuestionBankManager() {
       await loadQuestionFieldMappings();
     } catch (error) {
       console.error('Error saving question:', error);
-      toast.error('Failed to save question');
+      
+      let errorMessage = 'Failed to save question';
+      if (error.message?.includes('duplicate key')) {
+        errorMessage = 'A question with this ID already exists';
+      } else if (error.message?.includes('null value')) {
+        errorMessage = 'Required field is missing - please check all fields';
+      } else if (error.message?.includes('violates')) {
+        errorMessage = 'Database constraint violation - please check your data';
+      } else if (error.message) {
+        errorMessage = `Failed to save question: ${error.message}`;
+      }
+      
+      toast.error(errorMessage);
     }
   }
 
