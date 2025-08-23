@@ -143,8 +143,8 @@ export default function Dashboard() {
         icon: BookOpen,
         title: 'Focus on Fundamentals',
         description: 'Review basic concepts to strengthen your foundation',
-        action: 'Start Learning Path',
-        link: '/learn',
+        action: 'Take Assessment',
+        link: '/assignment',
         color: 'bg-blue-500/20 border-blue-400/30'
       })
     }
@@ -357,14 +357,6 @@ export default function Dashboard() {
                           <div className="flex-1 text-left">
                             <div className="text-sm font-medium text-white">Edit Profile</div>
                             <div className="text-xs text-purple-200/80">Update information</div>
-                          </div>
-                          <ChevronRight className="w-5 h-5 text-white/40" />
-                        </Link>
-                        <Link to="/learn" className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30 hover:from-blue-500/30 transition-all group">
-                          <BookOpen className="w-6 h-6 text-blue-400" />
-                          <div className="flex-1 text-left">
-                            <div className="text-sm font-medium text-white">Learning Journey</div>
-                            <div className="text-xs text-blue-200/80">Explore curriculum</div>
                           </div>
                           <ChevronRight className="w-5 h-5 text-white/40" />
                         </Link>

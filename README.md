@@ -39,10 +39,10 @@ Schema reference: `gurukulSchemaV1_1` exported from `src/data/gurukul.js` mirror
 
 ## Auth (Clerk)
 
-Optional: add to `.env.local` to enable Clerk auth UI and gate `/learn`:
+Optional: add to `.env.local` to enable Clerk auth UI and gate `/dashboard`:
 
 ```
 VITE_CLERK_PUBLISHABLE_KEY=pk_test_cGxlYXNlZC16ZWJyYS01OC5jbGVyay5hY2NvdW50cy5kZXYk
 ```
 
-If not set, the app will run without Clerk; Learn will remain accessible.
+If not set, the app will run without Clerk; Dashboard will remain accessible.

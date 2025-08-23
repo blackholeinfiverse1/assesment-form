@@ -91,7 +91,7 @@ The system requires:
 ## Testing the Fix
 
 ### 1. Complete Assignment Flow
-1. Go to `/learn` and start an assignment
+1. Go to `/dashboard` and start an assignment
 2. Complete all questions with answers and explanations
 3. Submit the assignment
 4. Verify evaluation completes successfully
@@ -106,7 +106,7 @@ The system requires:
 
 ### 3. User Progress Tracking
 1. Complete multiple assignments
-2. Go to `/learn` to see User Progress section
+2. Go to `/dashboard` to see User Progress section
 3. Verify assignment history is displayed
 4. Check statistics and improvement tracking
 

@@ -66,8 +66,8 @@ The assignment feature provides logged-in users with AI-generated multidisciplin
    - Sign in with Clerk authentication
 
 3. **Access Assignment**:
-   - Go to `/learn` page
-   - Click "Start Assignment" button
+   - Go to `/dashboard` page
+   - Click "Take Assessment" button
    - Or navigate directly to `/assignment`
 
 ## How It Works
