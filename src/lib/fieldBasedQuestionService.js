@@ -122,6 +122,9 @@ class FieldBasedQuestionService {
             count,
             usedQuestionTexts
           );
+          // Persist AI-generated questions for admin visibility and future reuse
+          await this.storeGeneratedQuestions(aiQs, studyField, primaryCategory, difficulty);
+
           aiQs.forEach(q => usedQuestionTexts.add(normalizeText(q.question_text)));
           aiQuestions.push(...aiQs);
         } catch (e) {
@@ -412,6 +415,71 @@ class FieldBasedQuestionService {
       }
     } catch (error) {
       console.error('Error updating question statistics:', error);
+    }
+  }
+
+  // Persist AI-generated questions into Supabase and map them to a study field for admin visibility
+  async storeGeneratedQuestions(generatedQuestions, fieldId, category, difficulty) {
+    try {
+      if (!Array.isArray(generatedQuestions) || generatedQuestions.length === 0) return;
+
+      // Prepare upsert payload for question_banks
+      const nowIso = new Date().toISOString();
+      const payload = generatedQuestions.map((q, idx) => {
+        // Derive a deterministic question_id from text + category + difficulty
+        const base = `${(q.question_text || '').toLowerCase()}|${category}|${difficulty}`;
+        let hash = 0;
+        for (let i = 0; i < base.length; i++) {
+          hash = ((hash << 5) - hash) + base.charCodeAt(i);
+          hash |= 0;
+        }
+        const question_id = `AI_${category}_${difficulty}_${Math.abs(hash)}`;
+        return {
+          question_id,
+          category,
+          difficulty,
+          question_text: q.question_text,
+          options: q.options,
+          correct_answer: q.correct_answer,
+          explanation: q.explanation || '',
+          vedic_connection: q.vedic_connection || '',
+          modern_application: q.modern_application || '',
+          tags: ['ai_generated'],
+          is_active: true,
+          created_by: 'ai',
+          created_at: nowIso,
+          updated_at: nowIso
+        };
+      });
+
+      // Upsert into question_banks
+      const { data, error } = await supabase
+        .from('question_banks')
+        .upsert(payload, { onConflict: 'question_id' })
+        .select('question_id');
+
+      if (error) {
+        console.warn('Failed to upsert AI-generated questions:', error);
+      } else {
+        // Map questions to field if provided
+        if (fieldId) {
+          const mappings = payload.map(p => ({
+            question_id: p.question_id,
+            field_id: fieldId,
+            weight: 1,
+            is_primary: true
+          }));
+          const { error: mapErr } = await supabase
+            .from('question_field_mapping')
+            .upsert(mappings, { onConflict: 'question_id,field_id' });
+
+          if (mapErr) {
+            console.warn('Failed to upsert AI question field mappings:', mapErr);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Error storing AI-generated questions:', err);
     }
   }
 

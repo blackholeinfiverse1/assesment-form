@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { ASSIGNMENT_CATEGORIES, ASSIGNMENT_CONFIG } from '../data/assignment';
 import { fieldBasedQuestionService } from '../lib/fieldBasedQuestionService';
 import { supabase, SUPABASE_TABLE } from '../lib/supabaseClient';
+import { backgroundSelectionService } from '../lib/backgroundSelectionService';
 
 const CATEGORY_ICONS = {
   [ASSIGNMENT_CATEGORIES.CODING]: Code,
@@ -231,6 +232,31 @@ export default function Assignment({ onComplete, userId = null, userEmail = null
       } catch (studentError) {
         console.warn('Could not fetch student data:', studentError);
         progressCallback('Using default profile for question generation', 30);
+      }
+
+      // Merge background selection data for better field detection
+      progressCallback('Loading background selection...', 40);
+      try {
+        const backgroundSelection = await backgroundSelectionService.getBackgroundSelection(userId);
+        if (backgroundSelection) {
+          console.log('📋 Background selection found:', backgroundSelection);
+          // Merge background selection into student data for enhanced field detection
+          studentData = {
+            ...studentData,
+            background_field_of_study: backgroundSelection.field_of_study,
+            background_class_level: backgroundSelection.class_level,
+            background_learning_goals: backgroundSelection.learning_goals,
+            // Override field_of_study if background selection is more specific
+            field_of_study: backgroundSelection.field_of_study || studentData.field_of_study || studentData.responses?.field_of_study
+          };
+          progressCallback('Background selection merged successfully', 45);
+        } else {
+          console.log('📋 No background selection found, using student data only');
+          progressCallback('Using student data for field detection', 45);
+        }
+      } catch (bgError) {
+        console.warn('Could not fetch background selection:', bgError);
+        progressCallback('Using student data for field detection', 45);
       }
 
       progressCallback('Analyzing student background and study field...', 50);

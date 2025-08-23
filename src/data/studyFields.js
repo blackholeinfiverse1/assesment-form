@@ -263,13 +263,35 @@ export function detectStudyFieldFromBackground(studentData) {
     return String(val || '');
   };
 
+  // Prioritize background selection data if available
+  const backgroundField = studentData.background_field_of_study;
+  if (backgroundField) {
+    console.log(`🎯 Using background selection field: ${backgroundField}`);
+    // Direct mapping from background selection to study field IDs
+    const fieldMapping = {
+      'stem': STUDY_FIELDS.STEM.id,
+      'business': STUDY_FIELDS.BUSINESS.id,
+      'social_sciences': STUDY_FIELDS.SOCIAL_SCIENCES.id,
+      'health_medicine': STUDY_FIELDS.HEALTH_MEDICINE.id,
+      'creative_arts': STUDY_FIELDS.CREATIVE_ARTS.id,
+      'other': STUDY_FIELDS.OTHER.id
+    };
+    
+    if (fieldMapping[backgroundField]) {
+      return fieldMapping[backgroundField];
+    }
+  }
+
+  // Fallback to text analysis if no background selection
   const field = pick(studentData.field_of_study, studentData.responses?.field_of_study);
   const skills = pick(studentData.current_skills, studentData.responses?.current_skills);
   const interests = pick(studentData.interests, studentData.responses?.interests);
   const goals = pick(studentData.goals, studentData.responses?.goals);
   const edu = pick(studentData.education_level, studentData.responses?.education_level);
+  const bgGoals = pick(studentData.background_learning_goals, '');
+  const bgClass = pick(studentData.background_class_level, '');
 
-  const combinedText = `${field} ${skills} ${interests} ${goals} ${edu}`.toLowerCase();
+  const combinedText = `${field} ${skills} ${interests} ${goals} ${edu} ${bgGoals} ${bgClass}`.toLowerCase();
 
   // STEM keywords incl. common abbreviations
   const stemKeywords = [

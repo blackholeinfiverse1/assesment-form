@@ -8,6 +8,7 @@ import Admin from "./pages/Admin";
 import { SignInPage, SignUpPage } from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import StudentRedirect from "./components/StudentRedirect";
+import BackgroundSelectionWrapper from "./components/BackgroundSelectionWrapper";
 import Intake from "./pages/Intake";
 import Assignment from "./pages/Assignment";
 
@@ -31,9 +32,11 @@ export default function App() {
             path="intake"
             element={
               <ProtectedRoute>
-                <StudentRedirect>
-                  <Intake />
-                </StudentRedirect>
+                <BackgroundSelectionWrapper>
+                  <StudentRedirect>
+                    <Intake />
+                  </StudentRedirect>
+                </BackgroundSelectionWrapper>
               </ProtectedRoute>
             }
           />
@@ -41,9 +44,11 @@ export default function App() {
             path="assignment"
             element={
               <ProtectedRoute>
-                <StudentRedirect>
-                  <Assignment />
-                </StudentRedirect>
+                <BackgroundSelectionWrapper>
+                  <StudentRedirect>
+                    <Assignment />
+                  </StudentRedirect>
+                </BackgroundSelectionWrapper>
               </ProtectedRoute>
             }
           />
