@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { BookOpen, Brain, Calculator, Code, Globe, Newspaper, Scroll, Plus, Edit2, Trash2, Search, Users, Tag, Filter } from 'lucide-react';
+import { BookOpen, Brain, Calculator, Code, Globe, Newspaper, Scroll, Plus, Edit2, Trash2, Search, Users, Tag, Filter, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ASSIGNMENT_CATEGORIES, DIFFICULTY_LEVELS } from '../data/assignment.js';
 import { supabase } from '../lib/supabaseClient';
@@ -21,16 +21,22 @@ const DIFFICULTY_COLORS = {
   [DIFFICULTY_LEVELS.HARD]: 'text-red-400 bg-red-400/10 border-red-400/20'
 };
 
-const STUDY_FIELDS = {
-  stem: { label: 'STEM', icon: '🔬', color: 'text-blue-400 bg-blue-400/10 border-blue-400/20' },
-  business: { label: 'Business', icon: '💼', color: 'text-green-400 bg-green-400/10 border-green-400/20' },
-  social_sciences: { label: 'Social Sciences', icon: '🏛️', color: 'text-purple-400 bg-purple-400/10 border-purple-400/20' },
-  health_medicine: { label: 'Health & Medicine', icon: '⚕️', color: 'text-red-400 bg-red-400/10 border-red-400/20' },
-  creative_arts: { label: 'Creative Arts', icon: '🎨', color: 'text-pink-400 bg-pink-400/10 border-pink-400/20' },
-  other: { label: 'Other', icon: '📚', color: 'text-gray-400 bg-gray-400/10 border-gray-400/20' }
-};
+const FIELD_COLORS = [
+  'text-blue-400 bg-blue-400/10 border-blue-400/20',
+  'text-green-400 bg-green-400/10 border-green-400/20',
+  'text-purple-400 bg-purple-400/10 border-purple-400/20',
+  'text-red-400 bg-red-400/10 border-red-400/20',
+  'text-pink-400 bg-pink-400/10 border-pink-400/20',
+  'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
+  'text-indigo-400 bg-indigo-400/10 border-indigo-400/20',
+  'text-teal-400 bg-teal-400/10 border-teal-400/20',
+  'text-orange-400 bg-orange-400/10 border-orange-400/20',
+  'text-cyan-400 bg-cyan-400/10 border-cyan-400/20'
+];
 
-function QuestionCard({ question, questionFields, onEdit, onDelete, onManageFields }) {
+const DEFAULT_EMOJIS = ['🔬', '💼', '🏛️', '⚕️', '🎨', '📚', '🌟', '🚀', '💡', '🎯', '🔥', '⭐', '🌈', '🎪', '🎭'];
+
+function QuestionCard({ question, questionFields, studyFields, onEdit, onDelete, onManageFields }) {
   const IconComponent = CATEGORY_ICONS[question.category] || BookOpen;
   const difficultyClass = DIFFICULTY_COLORS[question.difficulty] || DIFFICULTY_COLORS[DIFFICULTY_LEVELS.EASY];
 
@@ -78,15 +84,15 @@ function QuestionCard({ question, questionFields, onEdit, onDelete, onManageFiel
       {questionFields && questionFields.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {questionFields.map(fieldId => {
-            const field = STUDY_FIELDS[fieldId];
+            const field = studyFields.find(f => f.field_id === fieldId);
             if (!field) return null;
             return (
               <span
                 key={fieldId}
                 className={`text-xs px-2 py-1 rounded-full border ${field.color}`}
-                title={`Assigned to ${field.label} students`}
+                title={`Assigned to ${field.name} students`}
               >
-                {field.icon} {field.label}
+                {field.icon} {field.name}
               </span>
             );
           })}
@@ -129,6 +135,7 @@ function QuestionCard({ question, questionFields, onEdit, onDelete, onManageFiel
 
 export default function QuestionBankManager() {
   const [questions, setQuestions] = useState([]);
+  const [studyFields, setStudyFields] = useState([]);
   const [questionFieldMappings, setQuestionFieldMappings] = useState({});
   const [filteredQuestions, setFilteredQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -141,9 +148,13 @@ export default function QuestionBankManager() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [showFieldManager, setShowFieldManager] = useState(false);
   const [managingQuestion, setManagingQuestion] = useState(null);
+  const [showFieldSettings, setShowFieldSettings] = useState(false);
+  const [editingField, setEditingField] = useState(null);
+  const [fieldDeleteConfirm, setFieldDeleteConfirm] = useState(null);
   const [stats, setStats] = useState({});
 
   useEffect(() => {
+    loadStudyFields();
     loadQuestions();
     loadQuestionFieldMappings();
   }, []);
@@ -151,7 +162,70 @@ export default function QuestionBankManager() {
   useEffect(() => {
     filterQuestions();
     calculateStats();
-  }, [questions, questionFieldMappings, searchTerm, selectedCategory, selectedDifficulty, selectedField]);
+  }, [questions, questionFieldMappings, studyFields, searchTerm, selectedCategory, selectedDifficulty, selectedField]);
+
+  async function loadStudyFields() {
+    try {
+      const { data, error } = await supabase
+        .from('study_fields')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: true });
+      
+      if (error) throw error;
+      
+      // Add colors to fields
+      const fieldsWithColors = (data || []).map((field, index) => ({
+        ...field,
+        color: field.color || FIELD_COLORS[index % FIELD_COLORS.length]
+      }));
+      
+      setStudyFields(fieldsWithColors);
+    } catch (error) {
+      console.error('Error loading study fields:', error);
+      // Initialize with default fields if table doesn't exist or is empty
+      await initializeDefaultFields();
+    }
+  }
+
+  async function initializeDefaultFields() {
+    const defaultFields = [
+      { field_id: 'stem', name: 'STEM', icon: '🔬', description: 'Science, Technology, Engineering, and Mathematics' },
+      { field_id: 'business', name: 'Business', icon: '💼', description: 'Business and Economics' },
+      { field_id: 'social_sciences', name: 'Social Sciences', icon: '🏛️', description: 'Social Sciences and Humanities' },
+      { field_id: 'health_medicine', name: 'Health & Medicine', icon: '⚕️', description: 'Healthcare and Medical Sciences' },
+      { field_id: 'creative_arts', name: 'Creative Arts', icon: '🎨', description: 'Arts, Design, and Creative Fields' }
+    ];
+
+    try {
+      const fieldsWithColors = defaultFields.map((field, index) => ({
+        ...field,
+        color: FIELD_COLORS[index],
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }));
+
+      const { error } = await supabase
+        .from('study_fields')
+        .upsert(fieldsWithColors, { onConflict: 'field_id' });
+
+      if (error) {
+        console.error('Error initializing default fields:', error);
+        // Fallback to local state if database operations fail
+        setStudyFields(fieldsWithColors);
+      } else {
+        setStudyFields(fieldsWithColors);
+      }
+    } catch (error) {
+      console.error('Error initializing fields:', error);
+      // Fallback to local state
+      setStudyFields(defaultFields.map((field, index) => ({
+        ...field,
+        color: FIELD_COLORS[index]
+      })));
+    }
+  }
 
   async function loadQuestions() {
     setLoading(true);
@@ -198,8 +272,8 @@ export default function QuestionBankManager() {
     });
     
     // Add field stats
-    Object.keys(STUDY_FIELDS).forEach(fieldId => {
-      newStats[`field_${fieldId}`] = { total: 0, easy: 0, medium: 0, hard: 0 };
+    studyFields.forEach(field => {
+      newStats[`field_${field.field_id}`] = { total: 0, easy: 0, medium: 0, hard: 0 };
     });
 
     (questions || []).forEach(q => {
@@ -274,10 +348,10 @@ export default function QuestionBankManager() {
 
       // Get selected fields
       const selectedFields = [];
-      Object.keys(STUDY_FIELDS).forEach(fieldId => {
-        const checkbox = document.getElementById(`qb-field-${fieldId}`);
+      studyFields.forEach(field => {
+        const checkbox = document.getElementById(`qb-field-${field.field_id}`);
         if (checkbox?.checked) {
-          selectedFields.push(fieldId);
+          selectedFields.push(field.field_id);
         }
       });
 
@@ -370,6 +444,87 @@ export default function QuestionBankManager() {
     }
   }
 
+  async function saveFieldFromModal() {
+    try {
+      const name = document.getElementById('field-name')?.value?.trim();
+      const icon = document.getElementById('field-icon')?.value?.trim();
+      const description = document.getElementById('field-description')?.value?.trim();
+
+      if (!name) return toast.error('Field name is required');
+      if (!icon) return toast.error('Field icon is required');
+
+      const field_id = editingField?.field_id || name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      const color = editingField?.color || FIELD_COLORS[studyFields.length % FIELD_COLORS.length];
+
+      const payload = {
+        field_id,
+        name,
+        icon,
+        description: description || null,
+        color,
+        is_active: true,
+        updated_at: new Date().toISOString()
+      };
+
+      if (editingField) {
+        // Update existing field
+        const { error } = await supabase
+          .from('study_fields')
+          .update(payload)
+          .eq('field_id', editingField.field_id);
+        if (error) throw error;
+      } else {
+        // Insert new field
+        payload.created_at = new Date().toISOString();
+        const { error } = await supabase
+          .from('study_fields')
+          .insert([payload]);
+        if (error) throw error;
+      }
+
+      toast.success(editingField ? 'Field updated' : 'Field added');
+      setShowFieldSettings(false);
+      setEditingField(null);
+      await loadStudyFields();
+    } catch (error) {
+      console.error('Error saving field:', error);
+      toast.error('Failed to save field');
+    }
+  }
+
+  async function deleteField() {
+    if (!fieldDeleteConfirm) return;
+    
+    try {
+      // Check if field has questions assigned
+      const questionCount = Object.values(questionFieldMappings).filter(fields => 
+        fields.includes(fieldDeleteConfirm.field_id)
+      ).length;
+
+      if (questionCount > 0) {
+        toast.error(`Cannot delete field "${fieldDeleteConfirm.name}" - it has ${questionCount} questions assigned. Please reassign or delete those questions first.`);
+        setFieldDeleteConfirm(null);
+        return;
+      }
+
+      // Delete field
+      const { error } = await supabase
+        .from('study_fields')
+        .delete()
+        .eq('field_id', fieldDeleteConfirm.field_id);
+      
+      if (error) throw error;
+      
+      toast.success(`Field "${fieldDeleteConfirm.name}" deleted`);
+      await loadStudyFields();
+    } catch (error) {
+      console.error('Error deleting field:', error);
+      toast.error('Failed to delete field');
+    } finally {
+      setFieldDeleteConfirm(null);
+    }
+  }
+
   async function handleDeleteQuestion(question) {
     setDeleteConfirm(question);
   }
@@ -416,10 +571,10 @@ export default function QuestionBankManager() {
 
     try {
       const selectedFields = [];
-      Object.keys(STUDY_FIELDS).forEach(fieldId => {
-        const checkbox = document.getElementById(`field-manager-${fieldId}`);
+      studyFields.forEach(field => {
+        const checkbox = document.getElementById(`field-manager-${field.field_id}`);
         if (checkbox?.checked) {
-          selectedFields.push(fieldId);
+          selectedFields.push(field.field_id);
         }
       });
 
@@ -451,27 +606,36 @@ export default function QuestionBankManager() {
           <h2 className="text-2xl font-bold text-white">Question Bank Manager</h2>
           <p className="text-white/70">Manage questions and assign them to specific study fields</p>
         </div>
-        <button
-          onClick={() => {
-            setEditingQuestion(null);
-            setShowForm(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Question
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFieldSettings(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+            Manage Fields
+          </button>
+          <button
+            onClick={() => {
+              setEditingQuestion(null);
+              setShowForm(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Question
+          </button>
+        </div>
       </div>
 
       {/* Field Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {Object.entries(STUDY_FIELDS).map(([fieldId, field]) => {
-          const data = stats[`field_${fieldId}`] || { total: 0, easy: 0, medium: 0, hard: 0 };
+        {studyFields.map(field => {
+          const data = stats[`field_${field.field_id}`] || { total: 0, easy: 0, medium: 0, hard: 0 };
           return (
-            <div key={fieldId} className="rounded-xl border border-white/20 bg-white/10 p-4">
+            <div key={field.field_id} className="rounded-xl border border-white/20 bg-white/10 p-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-lg">{field.icon}</span>
-                <span className="text-sm font-medium text-white">{field.label}</span>
+                <span className="text-sm font-medium text-white">{field.name}</span>
               </div>
               <div className="text-2xl font-bold text-white mb-1">{data.total}</div>
               <div className="text-xs text-white/60">
@@ -522,9 +686,9 @@ export default function QuestionBankManager() {
           className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
         >
           <option value="" className="bg-gray-900">All Fields</option>
-          {Object.entries(STUDY_FIELDS).map(([fieldId, field]) => (
-            <option key={fieldId} value={fieldId} className="bg-gray-900">
-              {field.icon} {field.label}
+          {studyFields.map(field => (
+            <option key={field.field_id} value={field.field_id} className="bg-gray-900">
+              {field.icon} {field.name}
             </option>
           ))}
         </select>
@@ -563,6 +727,7 @@ export default function QuestionBankManager() {
             key={question.question_id}
             question={question}
             questionFields={questionFieldMappings[question.question_id] || []}
+            studyFields={studyFields}
             onEdit={handleEditQuestion}
             onDelete={handleDeleteQuestion}
             onManageFields={handleManageFields}
@@ -574,6 +739,289 @@ export default function QuestionBankManager() {
         <div className="text-center py-12">
           <p className="text-white/70">No questions found matching your criteria.</p>
         </div>
+      )}
+
+      {/* Field Settings Modal */}
+      {showFieldSettings && createPortal(
+        <div 
+          style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0, left: 0,
+            background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)', 
+            zIndex: 10000000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'fadeIn 0.3s ease-out'
+          }}
+          onClick={() => setShowFieldSettings(false)}
+        >
+          <div 
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%)',
+              backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.25)',
+              borderRadius: '20px', padding: '2rem', maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div>
+                <h3 style={{ color: 'white', fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Settings className="w-6 h-6" />
+                  Manage Study Fields
+                </h3>
+                <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>
+                  Add, edit, or remove study fields for question assignment
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowFieldSettings(false)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Add New Field Button */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <button
+                onClick={() => {
+                  setEditingField(null);
+                  // Show field form inline
+                  const form = document.getElementById('field-form');
+                  if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+                }}
+                style={{
+                  padding: '0.75rem 1rem', borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #10b981, #059669)', 
+                  color: 'white', border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem'
+                }}
+              >
+                <Plus className="w-4 h-4" />
+                Add New Field
+              </button>
+            </div>
+
+            {/* Field Form */}
+            <div id="field-form" style={{ display: 'none', marginBottom: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <h4 style={{ color: 'white', marginBottom: '1rem' }}>
+                {editingField ? 'Edit Field' : 'Add New Field'}
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', color: 'white', fontSize: '0.875rem' }}>
+                    Field Name *
+                  </label>
+                  <input
+                    id="field-name"
+                    type="text"
+                    defaultValue={editingField?.name || ''}
+                    placeholder="e.g., Data Science"
+                    style={{
+                      width: '100%', padding: '0.75rem', borderRadius: '8px',
+                      border: '1px solid rgba(255,255,255,0.2)', color: 'white', background: 'rgba(255,255,255,0.08)'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', color: 'white', fontSize: '0.875rem' }}>
+                    Icon *
+                  </label>
+                  <input
+                    id="field-icon"
+                    type="text"
+                    defaultValue={editingField?.icon || ''}
+                    placeholder="📊"
+                    style={{
+                      width: '100%', padding: '0.75rem', borderRadius: '8px',
+                      border: '1px solid rgba(255,255,255,0.2)', color: 'white', background: 'rgba(255,255,255,0.08)',
+                      textAlign: 'center', fontSize: '1.2rem'
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'white', fontSize: '0.875rem' }}>
+                  Description
+                </label>
+                <textarea
+                  id="field-description"
+                  defaultValue={editingField?.description || ''}
+                  placeholder="Brief description of this field..."
+                  rows={2}
+                  style={{
+                    width: '100%', padding: '0.75rem', borderRadius: '8px',
+                    border: '1px solid rgba(255,255,255,0.2)', color: 'white', background: 'rgba(255,255,255,0.08)'
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  onClick={() => {
+                    document.getElementById('field-form').style.display = 'none';
+                    setEditingField(null);
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem', borderRadius: '8px',
+                    border: '1px solid rgba(255,255,255,0.25)', 
+                    background: 'rgba(255,255,255,0.12)', color: 'white'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveFieldFromModal}
+                  style={{
+                    padding: '0.5rem 1rem', borderRadius: '8px',
+                    background: 'linear-gradient(135deg, #ea580c, #f97316)', 
+                    color: 'white', border: 'none'
+                  }}
+                >
+                  {editingField ? 'Update' : 'Add'} Field
+                </button>
+              </div>
+            </div>
+
+            {/* Existing Fields */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+              {studyFields.map(field => (
+                <div
+                  key={field.field_id}
+                  style={{
+                    padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)',
+                    background: 'rgba(255,255,255,0.05)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '1.5rem' }}>{field.icon}</span>
+                      <span style={{ color: 'white', fontWeight: 600 }}>{field.name}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.25rem' }}>
+                      <button
+                        onClick={() => {
+                          setEditingField(field);
+                          document.getElementById('field-form').style.display = 'block';
+                          document.getElementById('field-name').value = field.name;
+                          document.getElementById('field-icon').value = field.icon;
+                          document.getElementById('field-description').value = field.description || '';
+                        }}
+                        style={{
+                          padding: '0.25rem', borderRadius: '6px',
+                          background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white'
+                        }}
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => setFieldDeleteConfirm(field)}
+                        style={{
+                          padding: '0.25rem', borderRadius: '6px',
+                          background: 'rgba(239,68,68,0.2)', border: 'none', color: '#ef4444'
+                        }}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                  {field.description && (
+                    <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', margin: 0 }}>
+                      {field.description}
+                    </p>
+                  )}
+                  <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                    {(stats[`field_${field.field_id}`]?.total || 0)} questions assigned
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Emoji Suggestions */}
+            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
+              <h4 style={{ color: 'white', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Suggested Icons:</h4>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {DEFAULT_EMOJIS.map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={() => {
+                      const iconInput = document.getElementById('field-icon');
+                      if (iconInput) iconInput.value = emoji;
+                    }}
+                    style={{
+                      padding: '0.5rem', borderRadius: '8px', border: 'none',
+                      background: 'rgba(255,255,255,0.1)', fontSize: '1.2rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Field Delete Confirmation */}
+      {fieldDeleteConfirm && createPortal(
+        <div 
+          style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0, left: 0,
+            background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)', 
+            zIndex: 10000001, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            animation: 'fadeIn 0.3s ease-out'
+          }}
+          onClick={() => setFieldDeleteConfirm(null)}
+        >
+          <div 
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%)',
+              backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.25)',
+              borderRadius: '20px', padding: '2rem', maxWidth: '400px', width: '90%'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ 
+                width: '64px', height: '64px', borderRadius: '50%', 
+                background: 'rgba(239, 68, 68, 0.2)', margin: '0 auto 1rem',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <Trash2 className="w-8 h-8 text-red-400" />
+              </div>
+              <h3 style={{ color: 'white', fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                Delete Field "{fieldDeleteConfirm.name}"?
+              </h3>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>
+                This action cannot be undone. The field will be permanently removed and unassigned from all questions.
+              </p>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                onClick={() => setFieldDeleteConfirm(null)}
+                style={{
+                  flex: 1, padding: '0.75rem', borderRadius: '12px',
+                  border: '1px solid rgba(255,255,255,0.25)', 
+                  background: 'rgba(255,255,255,0.12)', color: 'white'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteField}
+                style={{
+                  flex: 1, padding: '0.75rem', borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #dc2626, #ef4444)', 
+                  color: 'white', border: 'none'
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {/* Question Form Modal */}
@@ -686,13 +1134,13 @@ export default function QuestionBankManager() {
                 Select which study fields should see this question in their assessments
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                {Object.entries(STUDY_FIELDS).map(([fieldId, field]) => {
+                {studyFields.map(field => {
                   const isAssigned = editingQuestion ? 
-                    (questionFieldMappings[editingQuestion.question_id] || []).includes(fieldId) : 
+                    (questionFieldMappings[editingQuestion.question_id] || []).includes(field.field_id) : 
                     false;
                   return (
                     <label
-                      key={fieldId}
+                      key={field.field_id}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem',
                         borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)',
@@ -703,13 +1151,13 @@ export default function QuestionBankManager() {
                     >
                       <input
                         type="checkbox"
-                        id={`qb-field-${fieldId}`}
+                        id={`qb-field-${field.field_id}`}
                         defaultChecked={isAssigned}
                         style={{ marginRight: '0.5rem' }}
                       />
                       <span style={{ fontSize: '1rem' }}>{field.icon}</span>
                       <span style={{ color: 'white', fontSize: '0.875rem', fontWeight: 500 }}>
-                        {field.label}
+                        {field.name}
                       </span>
                     </label>
                   );
@@ -885,11 +1333,11 @@ export default function QuestionBankManager() {
             
             <div style={{ marginBottom: '1.5rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem' }}>
-                {Object.entries(STUDY_FIELDS).map(([fieldId, field]) => {
-                  const isAssigned = (questionFieldMappings[managingQuestion.question_id] || []).includes(fieldId);
+                {studyFields.map(field => {
+                  const isAssigned = (questionFieldMappings[managingQuestion.question_id] || []).includes(field.field_id);
                   return (
                     <label
-                      key={fieldId}
+                      key={field.field_id}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem',
                         borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)',
@@ -900,13 +1348,13 @@ export default function QuestionBankManager() {
                     >
                       <input
                         type="checkbox"
-                        id={`field-manager-${fieldId}`}
+                        id={`field-manager-${field.field_id}`}
                         defaultChecked={isAssigned}
                         style={{ marginRight: '0.5rem' }}
                       />
                       <span style={{ fontSize: '1.2rem' }}>{field.icon}</span>
                       <span style={{ color: 'white', fontSize: '0.875rem', fontWeight: 500 }}>
-                        {field.label}
+                        {field.name}
                       </span>
                     </label>
                   );
