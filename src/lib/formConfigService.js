@@ -1,4 +1,5 @@
 import { supabase, FORM_CONFIG_TABLE } from "./supabaseClient";
+import { DynamicFieldService } from "./dynamicFieldService";
 
 // Field types supported by the form builder
 export const FIELD_TYPES = {
@@ -102,11 +103,19 @@ export const DEFAULT_FORM_CONFIG = {
     },
     {
       id: "field_of_study",
-      type: FIELD_TYPES.TEXT,
+      type: FIELD_TYPES.SELECT,
       label: "Field of Study",
-      placeholder: "CS, Math, Humanities, ...",
-      required: false,
+      placeholder: "Select your field of study",
+      required: true,
       order: 6,
+      options: [
+        { value: "stem", label: "🔬 STEM (Science, Technology, Engineering, Mathematics)" },
+        { value: "business", label: "💼 Business & Economics" },
+        { value: "social_sciences", label: "🏛️ Social Sciences" },
+        { value: "health_medicine", label: "⚕️ Health & Medicine" },
+        { value: "creative_arts", label: "🎨 Creative Arts & Humanities" },
+        { value: "other", label: "📚 Other Fields" },
+      ],
     },
     {
       id: "current_skills",
@@ -179,7 +188,29 @@ export const DEFAULT_FORM_CONFIG = {
 
 // Form configuration service
 export class FormConfigService {
-  // Get the active form configuration
+  // Get dynamic study field options from database
+  static async getStudyFieldOptions() {
+    try {
+      const fields = await DynamicFieldService.getAllFields();
+      return fields.map(field => ({
+        value: field.field_id,
+        label: `${field.icon} ${field.name}`,
+      }));
+    } catch (error) {
+      console.error('Error loading dynamic study fields:', error);
+      // Fallback to default options
+      return [
+        { value: "stem", label: "🔬 STEM (Science, Technology, Engineering, Mathematics)" },
+        { value: "business", label: "💼 Business & Economics" },
+        { value: "social_sciences", label: "🏛️ Social Sciences" },
+        { value: "health_medicine", label: "⚕️ Health & Medicine" },
+        { value: "creative_arts", label: "🎨 Creative Arts & Humanities" },
+        { value: "other", label: "📚 Other Fields" },
+      ];
+    }
+  }
+
+  // Get the active form configuration with dynamic fields
   static async getActiveFormConfig() {
     try {
       const { data, error } = await supabase
@@ -193,16 +224,45 @@ export class FormConfigService {
         throw error;
       }
 
-      // If no active config found, return default
+      // If no active config found, return default with dynamic fields
       if (!data) {
-        return DEFAULT_FORM_CONFIG;
+        return await this.getDefaultFormConfigWithDynamicFields();
+      }
+
+      // Update field_of_study options with dynamic fields if it exists
+      if (data.fields) {
+        const fieldOfStudyField = data.fields.find(f => f.id === 'field_of_study');
+        if (fieldOfStudyField && fieldOfStudyField.type === 'select') {
+          const dynamicOptions = await this.getStudyFieldOptions();
+          fieldOfStudyField.options = dynamicOptions;
+        }
       }
 
       return data;
     } catch (error) {
       console.error("Error fetching form config:", error);
-      return DEFAULT_FORM_CONFIG;
+      return await this.getDefaultFormConfigWithDynamicFields();
     }
+  }
+
+  // Get default configuration with dynamic study fields
+  static async getDefaultFormConfigWithDynamicFields() {
+    const dynamicFieldOptions = await this.getStudyFieldOptions();
+    
+    const config = {
+      ...DEFAULT_FORM_CONFIG,
+      fields: DEFAULT_FORM_CONFIG.fields.map(field => {
+        if (field.id === 'field_of_study') {
+          return {
+            ...field,
+            options: dynamicFieldOptions
+          };
+        }
+        return field;
+      })
+    };
+    
+    return config;
   }
 
   // Save form configuration

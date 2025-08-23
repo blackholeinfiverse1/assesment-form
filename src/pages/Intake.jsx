@@ -268,6 +268,9 @@ function Intake() {
       });
     }
 
+    console.log('💾 Processed form responses:', responses);
+    console.log('🎯 Field of study selection:', responses.field_of_study);
+
     // Generate student ID if this is a new student
     const generateStudentId = () => {
       const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
@@ -283,10 +286,13 @@ function Intake() {
       email: form.email || null,
       student_id: isEditing ? undefined : generateStudentId(), // Only set for new students
       grade: form.education_level || null, // Map education_level to grade
+      field_of_study: form.field_of_study || responses.field_of_study || null, // Add field selection to top level
       tier: null, // Will be assigned by admin later
       responses,
       updated_at: new Date().toISOString(),
     };
+
+    console.log('🚀 Final payload with field_of_study:', payload);
 
     try {
       console.log("Submitting payload:", payload);

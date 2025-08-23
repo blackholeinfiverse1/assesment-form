@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import FormBuilder from "../components/FormBuilder";
 import QuestionBankManager from "../components/QuestionBankManager";
 import StudentAnalytics from "../components/StudentAnalytics";
+import DatabaseTest from "../components/DatabaseTest";
 import { adminAuth } from "../config/admin";
 import { FormConfigService } from "../lib/formConfigService";
 import { supabase, SUPABASE_TABLE } from "../lib/supabaseClient";
@@ -530,6 +531,16 @@ export default function Admin() {
             }`}
           >
             Question Banks
+          </button>
+          <button
+            onClick={() => setActiveTab("database-test")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "database-test"
+                ? "border-orange-500 text-orange-400"
+                : "border-transparent text-white/70 hover:text-white"
+            }`}
+          >
+            Database Test
           </button>
         </div>
       </div>
@@ -1253,6 +1264,13 @@ export default function Admin() {
       {activeTab === "question-banks" && (
         <div className="card">
           <QuestionBankManager />
+        </div>
+      )}
+
+      {/* Database Test Tab */}
+      {activeTab === "database-test" && (
+        <div className="card">
+          <DatabaseTest />
         </div>
       )}
 

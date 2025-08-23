@@ -141,7 +141,7 @@ class FieldBasedQuestionService {
 
       // Top-up if still short using curated bank from the same primary category
       if (combined.length < totalQuestions) {
-        const needed = totalQuestions - combined.length;
+        const _needed = totalQuestions - combined.length;
         const usedTexts = new Set(combined.map(q => (q.question_text || '').toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim()));
         // Fill order preference: medium -> easy -> hard
         const fillOrder = [DIFFICULTY_LEVELS.MEDIUM, DIFFICULTY_LEVELS.EASY, DIFFICULTY_LEVELS.HARD];
@@ -182,7 +182,7 @@ class FieldBasedQuestionService {
         const questions = await this.generateQuestionsFromDistribution(questionDistribution);
         console.warn('↩️ Falling back to distribution-based questions.');
         return questions;
-      } catch (e2) {
+      } catch {
         throw new Error(`Failed to generate questions: ${error.message}`);
       }
     }
@@ -338,6 +338,8 @@ class FieldBasedQuestionService {
    */
   async getQuestionsFromDatabase(category, difficulty, count) {
     try {
+      console.log(`🔍 Fetching general questions: category=${category}, difficulty=${difficulty}, count=${count}`);
+      
       const { data, error } = await supabase
         .from('question_banks')
         .select('*')
@@ -351,6 +353,7 @@ class FieldBasedQuestionService {
         return [];
       }
 
+      console.log(`✅ Successfully fetched ${data?.length || 0} general questions from database`);
       return this.selectRandomQuestions(data || [], count);
     } catch (error) {
       console.error('Database query error:', error);
@@ -363,6 +366,8 @@ class FieldBasedQuestionService {
    */
   async getFieldMappedQuestionsFromDatabase(fieldId, category, difficulty, count) {
     try {
+      console.log(`🔍 Fetching field-mapped questions for field: ${fieldId}, category: ${category}, difficulty: ${difficulty}, count: ${count}`);
+      
       // 1) Find question_ids mapped to the field
       const { data: mappings, error: mapErr } = await supabase
         .from('question_field_mapping')
@@ -374,8 +379,15 @@ class FieldBasedQuestionService {
         return [];
       }
 
+      console.log(`📋 Found ${mappings?.length || 0} question mappings for field ${fieldId}`);
+      
       const ids = (mappings || []).map(m => m.question_id);
-      if (!ids.length) return [];
+      if (!ids.length) {
+        console.log(`❌ No questions mapped to field ${fieldId}`);
+        return [];
+      }
+
+      console.log(`🎯 Looking for questions with IDs:`, ids.slice(0, 5), ids.length > 5 ? `...and ${ids.length - 5} more` : '');
 
       // 2) Pull questions by ids with filters
       const { data, error } = await supabase
@@ -392,6 +404,7 @@ class FieldBasedQuestionService {
         return [];
       }
 
+      console.log(`✅ Successfully fetched ${data?.length || 0} field-mapped questions for ${fieldId}`);
       return this.selectRandomQuestions(data || [], count);
     } catch (error) {
       console.error('Database query error (mapped):', error);
@@ -425,7 +438,7 @@ class FieldBasedQuestionService {
 
       // Prepare upsert payload for question_banks
       const nowIso = new Date().toISOString();
-      const payload = generatedQuestions.map((q, idx) => {
+      const payload = generatedQuestions.map((q) => {
         // Derive a deterministic question_id from text + category + difficulty
         const base = `${(q.question_text || '').toLowerCase()}|${category}|${difficulty}`;
         let hash = 0;
@@ -453,10 +466,9 @@ class FieldBasedQuestionService {
       });
 
       // Upsert into question_banks
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('question_banks')
-        .upsert(payload, { onConflict: 'question_id' })
-        .select('question_id');
+        .upsert(payload, { onConflict: 'question_id' });
 
       if (error) {
         console.warn('Failed to upsert AI-generated questions:', error);

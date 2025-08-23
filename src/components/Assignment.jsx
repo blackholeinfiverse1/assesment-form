@@ -16,7 +16,7 @@ const CATEGORY_ICONS = {
   [ASSIGNMENT_CATEGORIES.CURRENT_AFFAIRS]: Newspaper
 };
 
-function QuestionCard({ question, questionNumber, userAnswer, onAnswerChange, onExplanationChange, userExplanation, timeRemaining }) {
+function QuestionCard({ question, questionNumber, userAnswer, onAnswerChange, onExplanationChange, userExplanation }) {
   const IconComponent = CATEGORY_ICONS[question.category] || BookOpen;
 
   return (
@@ -224,6 +224,9 @@ export default function Assignment({ onComplete, userId = null, userEmail = null
 
         if (!studentError && students && students.length > 0) {
           studentData = students[0];
+          console.log('📊 Raw student data:', studentData);
+          console.log('🎯 Student field_of_study from responses:', studentData?.responses?.field_of_study);
+          console.log('🎯 Student field_of_study direct:', studentData?.field_of_study);
           progressCallback('Student profile loaded successfully', 30);
         } else {
           console.warn('No student data found, using default profile');
@@ -469,7 +472,6 @@ export default function Assignment({ onComplete, userId = null, userEmail = null
         userExplanation={userExplanations[currentQuestion.id]}
         onAnswerChange={handleAnswerChange}
         onExplanationChange={handleExplanationChange}
-        timeRemaining={timeRemaining}
       />
 
       {/* Navigation */}

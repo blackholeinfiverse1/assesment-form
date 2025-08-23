@@ -2,13 +2,14 @@
 
 -- Create study_fields table to define available study fields
 CREATE TABLE IF NOT EXISTS study_fields (
-    id TEXT PRIMARY KEY,
+    field_id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     short_name TEXT NOT NULL,
     description TEXT,
     subcategories JSONB DEFAULT '[]',
     question_weights JSONB DEFAULT '{}',
     difficulty_distribution JSONB DEFAULT '{}',
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -161,7 +162,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Insert default study fields
-INSERT INTO study_fields (id, name, short_name, description, subcategories, question_weights, difficulty_distribution) VALUES
+INSERT INTO study_fields (field_id, name, short_name, description, subcategories, question_weights, difficulty_distribution, is_active) VALUES
 ('stem', 'STEM (Science, Technology, Engineering, Mathematics)', 'STEM', 
  'Science, Technology, Engineering, and Mathematics fields including Computer Science, Physics, Chemistry, Biology, Engineering, and Mathematical Sciences',
  '["Computer Science", "Software Engineering", "Data Science", "Cybersecurity", "Artificial Intelligence", "Physics", "Chemistry", "Biology", "Mathematics", "Engineering", "Information Technology"]',
@@ -198,7 +199,7 @@ INSERT INTO study_fields (id, name, short_name, description, subcategories, ques
  '{"Language": 20, "Logic": 20, "Current Affairs": 20, "Culture": 15, "Mathematics": 10, "Vedic Knowledge": 10, "Coding": 5}',
  '{"easy": 30, "medium": 50, "hard": 20}')
 
-ON CONFLICT (id) DO UPDATE SET
+ON CONFLICT (field_id) DO UPDATE SET
     name = EXCLUDED.name,
     short_name = EXCLUDED.short_name,
     description = EXCLUDED.description,
@@ -222,16 +223,16 @@ ORDER BY category, difficulty;
 
 CREATE OR REPLACE VIEW field_question_distribution AS
 SELECT 
-    sf.id as field_id,
+    sf.field_id as field_id,
     sf.name as field_name,
     qb.category,
     qb.difficulty,
     COUNT(*) as question_count,
     COUNT(CASE WHEN qb.is_active THEN 1 END) as active_questions
 FROM study_fields sf
-LEFT JOIN question_field_mapping qfm ON sf.id = qfm.field_id
+LEFT JOIN question_field_mapping qfm ON sf.field_id = qfm.field_id
 LEFT JOIN question_banks qb ON qfm.question_id = qb.question_id
-GROUP BY sf.id, sf.name, qb.category, qb.difficulty
+GROUP BY sf.field_id, sf.name, qb.category, qb.difficulty
 ORDER BY sf.name, qb.category, qb.difficulty;
 
 -- Comments for documentation
