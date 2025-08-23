@@ -562,8 +562,39 @@ export function generateFormConfigForField(fieldCategory, classLevel, learningGo
   const goalContext = learningGoals ? ` focused on ${learningGoals.replace('_', ' ')}` : '';
   formDescription += levelContext + goalContext + '.';
 
+  // Create education level field with pre-selected value from background selection
+  const educationLevelField = {
+    id: "education_level",
+    type: FIELD_TYPES.SELECT,
+    label: "Education Level",
+    placeholder: "Select your education level",
+    required: false,
+    order: 5,
+    defaultValue: classLevel, // Pre-populate from background selection
+    options: [
+      { value: "high_school", label: "High School" },
+      { value: "undergraduate", label: "Undergraduate" },
+      { value: "graduate", label: "Graduate" },
+      { value: "postgraduate", label: "Postgraduate" },
+      { value: "professional", label: "Professional/Working" },
+      { value: "other", label: "Other" }
+    ]
+  };
+
+  // Create goals field with pre-selected value from background selection
+  const goalsField = {
+    id: "goals",
+    type: FIELD_TYPES.TEXTAREA,
+    label: "Goals",
+    placeholder: "What do you want to achieve?",
+    required: false,
+    order: 90,
+    defaultValue: getLearningGoalDescription(learningGoals), // Pre-populate from background selection
+  };
+
   // Combine all fields and sort by order
-  const allFields = [...BASE_FIELDS, ...specificFields, ...COMMON_END_FIELDS]
+  // Note: We include education_level to show it's pre-filled, and goals to show learning goals
+  const allFields = [...BASE_FIELDS, educationLevelField, ...specificFields, goalsField, ...COMMON_END_FIELDS.filter(f => f.id !== 'additional_info')] // Remove duplicate goals
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 
   return {
@@ -581,6 +612,20 @@ export function generateFormConfigForField(fieldCategory, classLevel, learningGo
     updated_at: new Date().toISOString(),
     is_active: true,
   };
+}
+
+// Helper function to convert learning goals to description
+function getLearningGoalDescription(learningGoals) {
+  const goalDescriptions = {
+    'skill_building': 'Build specific skills for career advancement',
+    'academic_support': 'Get academic support and exam preparation',
+    'career_change': 'Transition to a new career path',
+    'personal_growth': 'Focus on personal growth and learning',
+    'certification': 'Obtain professional certification',
+    'exploration': 'Explore new interests and subjects'
+  };
+  
+  return goalDescriptions[learningGoals] || learningGoals;
 }
 
 // Export field categories for use in other components

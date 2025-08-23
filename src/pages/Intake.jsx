@@ -81,6 +81,9 @@ function Intake() {
               } else if (field.id === "name") {
                 // Pre-populate name with user's full name
                 initialForm[field.id] = user?.fullName || "";
+              } else if (field.defaultValue) {
+                // Pre-populate with default value from field config (background selection data)
+                initialForm[field.id] = field.defaultValue;
               } else {
                 initialForm[field.id] = "";
               }
