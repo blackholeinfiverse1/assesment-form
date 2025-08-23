@@ -124,7 +124,7 @@ export default function Admin() {
   // Form configuration management
   const [activeTab, setActiveTab] = useState("students");
   const [formConfigs, setFormConfigs] = useState([]);
-  const [activeFormConfig, setActiveFormConfig] = useState(null);
+  const [, setActiveFormConfig] = useState(null);
   const [showFormBuilder, setShowFormBuilder] = useState(false);
   const [editingFormConfig, setEditingFormConfig] = useState(null);
 
@@ -189,7 +189,7 @@ export default function Admin() {
     setEditingFormConfig(null);
   }
 
-  async function handleFormConfigSave(savedConfig) {
+  async function handleFormConfigSave() {
     await fetchFormConfigs();
     closeFormBuilder();
     setError("");
@@ -665,10 +665,10 @@ export default function Admin() {
             </div>
           )}
 
-          {drawerOpen && (
-            <div className="fixed inset-0 z-50">
+          {drawerOpen && createPortal(
+            <div className="fixed inset-0" style={{ zIndex: 9999999 }}>
               <div
-                className="absolute inset-0 bg-black/30"
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                 onClick={() => setDrawerOpen(false)}
               />
               <div className="absolute right-0 top-0 h-full w-full max-w-2xl overflow-y-auto bg-white/10 backdrop-blur-xl border-l border-white/20 shadow-xl text-white">
@@ -1163,18 +1163,25 @@ export default function Admin() {
       )}
 
       {/* Activate Configuration Modal */}
-      {showActivateModal && configToActivate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4">
+      {showActivateModal && configToActivate && createPortal(
+        <div 
+          className="fixed inset-0 flex items-center justify-center p-4"
+          style={{ zIndex: 9999999, background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)' }}
+          onClick={closeActivateModal}
+        >
+          <div 
+            className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-6 w-full max-w-md shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-white">
                 Activate Configuration
               </h3>
               <button
                 onClick={closeActivateModal}
-                className="text-gray-400 hover:text-white"
+                className="text-white/60 hover:text-white text-xl leading-none"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -1192,7 +1199,7 @@ export default function Admin() {
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={closeActivateModal}
-                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                className="px-4 py-2 text-white/60 hover:text-white transition-colors"
               >
                 Cancel
               </button>
@@ -1204,22 +1211,30 @@ export default function Admin() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Delete Configuration Modal */}
-      {showDeleteModal && configToDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 w-full max-w-md mx-4">
+      {showDeleteModal && configToDelete && createPortal(
+        <div 
+          className="fixed inset-0 flex items-center justify-center p-4"
+          style={{ zIndex: 9999999, background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(8px)' }}
+          onClick={closeDeleteModal}
+        >
+          <div 
+            className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl p-6 w-full max-w-md shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-white">
                 Delete Configuration
               </h3>
               <button
                 onClick={closeDeleteModal}
-                className="text-gray-400 hover:text-white"
+                className="text-white/60 hover:text-white text-xl leading-none"
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -1236,7 +1251,7 @@ export default function Admin() {
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={closeDeleteModal}
-                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                className="px-4 py-2 text-white/60 hover:text-white transition-colors"
               >
                 Cancel
               </button>
@@ -1248,7 +1263,8 @@ export default function Admin() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
 
