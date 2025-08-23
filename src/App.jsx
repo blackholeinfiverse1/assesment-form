@@ -5,6 +5,7 @@ import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
+import NotFound from "./pages/NotFound";
 import { SignInPage, SignUpPage } from "./pages/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import StudentRedirect from "./components/StudentRedirect";
@@ -53,6 +54,8 @@ export default function App() {
             }
           />
           <Route path="admin" element={<Admin />} />
+          {/* Catch-all route for 404 pages */}
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
 
