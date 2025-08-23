@@ -286,13 +286,12 @@ function Intake() {
       email: form.email || null,
       student_id: isEditing ? undefined : generateStudentId(), // Only set for new students
       grade: form.education_level || null, // Map education_level to grade
-      field_of_study: form.field_of_study || responses.field_of_study || null, // Add field selection to top level
       tier: null, // Will be assigned by admin later
       responses,
       updated_at: new Date().toISOString(),
     };
 
-    console.log('🚀 Final payload with field_of_study:', payload);
+    console.log('🚀 Final payload (field_of_study stored in responses):', payload);
 
     try {
       console.log("Submitting payload:", payload);
