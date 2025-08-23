@@ -1,20 +1,47 @@
-import React, { useState } from 'react';
-import { X, GraduationCap, BookOpen, Target } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, GraduationCap, BookOpen, Target, Loader } from 'lucide-react';
+import { DynamicFieldService } from '../lib/dynamicFieldService';
 
 const BackgroundSelectionModal = ({ isOpen, onSave, onClose }) => {
   const [fieldOfStudy, setFieldOfStudy] = useState('');
   const [classLevel, setClassLevel] = useState('');
   const [learningGoals, setLearningGoals] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fieldOptions, setFieldOptions] = useState([]);
+  const [loadingFields, setLoadingFields] = useState(true);
 
-  const fieldOptions = [
-    { value: 'stem', label: 'STEM (Science, Technology, Engineering, Math)' },
-    { value: 'business', label: 'Business & Economics' },
-    { value: 'social_sciences', label: 'Social Sciences & Humanities' },
-    { value: 'health_medicine', label: 'Health & Medicine' },
-    { value: 'creative_arts', label: 'Creative Arts & Design' },
-    { value: 'other', label: 'Other' }
-  ];
+  // Load dynamic fields when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadFields();
+    }
+  }, [isOpen]);
+
+  const loadFields = async () => {
+    try {
+      setLoadingFields(true);
+      const fields = await DynamicFieldService.getAllFields();
+      const options = fields.map(field => ({
+        value: field.field_id,
+        label: field.name,
+        icon: field.icon,
+        description: field.description
+      }));
+      setFieldOptions(options);
+    } catch (error) {
+      console.error('Error loading field options:', error);
+      // Fallback to basic options if loading fails
+      setFieldOptions([
+        { value: 'stem', label: 'STEM', icon: '🔬', description: 'Science, Technology, Engineering, Math' },
+        { value: 'business', label: 'Business', icon: '💼', description: 'Business & Economics' },
+        { value: 'social_sciences', label: 'Social Sciences', icon: '🏛️', description: 'Social Sciences & Humanities' },
+        { value: 'health_medicine', label: 'Health & Medicine', icon: '⚕️', description: 'Healthcare and Medical Sciences' },
+        { value: 'creative_arts', label: 'Creative Arts', icon: '🎨', description: 'Arts, Design, and Creative Fields' }
+      ]);
+    } finally {
+      setLoadingFields(false);
+    }
+  };
 
   const classLevelOptions = [
     { value: 'high_school', label: 'High School (9th-12th Grade)' },
@@ -89,33 +116,47 @@ const BackgroundSelectionModal = ({ isOpen, onSave, onClose }) => {
               What field are you studying or working in?
               <span className="text-orange-300">*</span>
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {fieldOptions.map((option) => (
-                <label
-                  key={option.value}
-                  className={`relative flex flex-col items-center justify-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] min-h-[60px] text-center ${
-                    fieldOfStudy === option.value
-                      ? 'border-orange-400 bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-white shadow-lg shadow-orange-500/20'
-                      : 'border-white/20 bg-white/5 text-white/80 hover:bg-white/10 hover:border-white/30'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="fieldOfStudy"
-                    value={option.value}
-                    checked={fieldOfStudy === option.value}
-                    onChange={(e) => setFieldOfStudy(e.target.value)}
-                    className="sr-only"
-                  />
-                  <span className="text-sm font-medium leading-tight">{option.label}</span>
-                  {fieldOfStudy === option.value && (
-                    <div className="absolute top-2 right-2">
-                      <div className="w-2 h-2 rounded-full bg-orange-400"></div>
+            
+            {loadingFields ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader className="w-6 h-6 text-orange-400 animate-spin" />
+                <span className="ml-2 text-white/70">Loading study fields...</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {fieldOptions.map((option) => (
+                  <label
+                    key={option.value}
+                    className={`relative flex flex-col items-center justify-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] min-h-[80px] text-center ${
+                      fieldOfStudy === option.value
+                        ? 'border-orange-400 bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-white shadow-lg shadow-orange-500/20'
+                        : 'border-white/20 bg-white/5 text-white/80 hover:bg-white/10 hover:border-white/30'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="fieldOfStudy"
+                      value={option.value}
+                      checked={fieldOfStudy === option.value}
+                      onChange={(e) => setFieldOfStudy(e.target.value)}
+                      className="sr-only"
+                    />
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">{option.icon}</span>
+                      <span className="text-sm font-medium">{option.label}</span>
                     </div>
-                  )}
-                </label>
-              ))}
-            </div>
+                    {option.description && (
+                      <span className="text-xs text-white/60 leading-tight">{option.description}</span>
+                    )}
+                    {fieldOfStudy === option.value && (
+                      <div className="absolute top-2 right-2">
+                        <div className="w-2 h-2 rounded-full bg-orange-400"></div>
+                      </div>
+                    )}
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Class Level */}
@@ -201,7 +242,7 @@ const BackgroundSelectionModal = ({ isOpen, onSave, onClose }) => {
             </button>
             <button
               type="submit"
-              disabled={!fieldOfStudy || !classLevel || !learningGoals || loading}
+              disabled={!fieldOfStudy || !classLevel || !learningGoals || loading || loadingFields}
               className="px-8 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-orange-500/50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
             >
               {loading ? 'Saving...' : 'Continue to Assessment'}

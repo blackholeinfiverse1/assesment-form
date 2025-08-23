@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { generateFormConfigForField } from './fieldSpecificFormConfigs';
+import { generateFormConfigForField } from './dynamicFieldSpecificFormConfigs';
 
 const BACKGROUND_SELECTION_TABLE = 'background_selections';
 
@@ -74,8 +74,8 @@ export const backgroundSelectionService = {
         return null;
       }
 
-      // Generate form configuration based on background selection
-      const formConfig = generateFormConfigForField(
+      // Generate form configuration based on background selection (now async)
+      const formConfig = await generateFormConfigForField(
         selection.field_of_study,
         selection.class_level,
         selection.learning_goals
