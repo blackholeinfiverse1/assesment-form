@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import { FIELD_TYPES, FormConfigService } from "../lib/formConfigService";
+import { EnhancedFormConfigService } from "../lib/enhancedFormConfigService";
 import DynamicForm from "./DynamicForm";
 import {
   Type,
@@ -23,6 +24,8 @@ import {
   Sparkles,
   User,
   GraduationCap,
+  BookOpen,
+  Target,
 } from "lucide-react";
 
 // Custom Dropdown Component
