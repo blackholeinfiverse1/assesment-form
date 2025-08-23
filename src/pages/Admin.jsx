@@ -385,21 +385,45 @@ export default function Admin() {
   async function confirmStudentDelete() {
     if (!studentDeleteConfirm) return;
 
-    const loadingToast = toast.loading("Deleting student...");
+    const loadingToast = toast.loading("Deleting student and all related data...");
     setLoading(true);
 
-    const { error: err } = await supabase
-      .from(SUPABASE_TABLE)
-      .delete()
-      .eq("id", studentDeleteConfirm.id);
+    try {
+      // Delete student record - this will cascade to assignment_attempts and assignment_responses
+      // due to ON DELETE CASCADE foreign key constraints
+      const { error: studentErr } = await supabase
+        .from(SUPABASE_TABLE)
+        .delete()
+        .eq("id", studentDeleteConfirm.id);
 
-    if (err) {
-      toast.error(err.message, { id: loadingToast });
-      setError(err.message);
-    } else {
-      toast.success("Student deleted successfully", { id: loadingToast });
+      if (studentErr) {
+        throw new Error(`Failed to delete student: ${studentErr.message}`);
+      }
+
+      // Delete background selection if it exists (uses user_id, not student_id)
+      if (studentDeleteConfirm.user_id) {
+        const { error: bgErr } = await supabase
+          .from("background_selections")
+          .delete()
+          .eq("user_id", studentDeleteConfirm.user_id);
+
+        if (bgErr) {
+          console.warn("Failed to delete background selection:", bgErr.message);
+          // Don't fail the entire operation for this
+        }
+      }
+
+      toast.success(
+        `Student "${studentDeleteConfirm.name}" and all related data deleted successfully`, 
+        { id: loadingToast }
+      );
       fetchStudents();
+    } catch (error) {
+      console.error("Error deleting student:", error);
+      toast.error(error.message || "Failed to delete student", { id: loadingToast });
+      setError(error.message || "Failed to delete student");
     }
+
     setLoading(false);
     setStudentDeleteConfirm(null);
   }
@@ -1262,9 +1286,16 @@ export default function Admin() {
               <h3 style={{ color: 'white', fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>
                 Delete Student Record?
               </h3>
-              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>
-                This action cannot be undone. The student record for "{studentDeleteConfirm.name}" will be permanently removed from the database.
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                This action cannot be undone. The following data will be permanently deleted:
               </p>
+              <ul style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem', textAlign: 'left', listStyle: 'disc', paddingLeft: '1.5rem' }}>
+                <li>Student profile and intake responses</li>
+                <li>Background selection preferences</li>
+                <li>All assignment attempts and scores</li>
+                <li>Detailed question responses</li>
+                <li>Tier information and progress data</li>
+              </ul>
             </div>
             
             <div style={{ display: 'flex', gap: '0.75rem' }}>

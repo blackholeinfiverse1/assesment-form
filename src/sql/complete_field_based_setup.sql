@@ -100,7 +100,8 @@ CREATE TABLE question_field_mapping (
   field_id TEXT NOT NULL,
   weight INTEGER DEFAULT 1,
   is_primary BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(question_id, field_id)
 );
 
 -- Question usage stats table to track question performance

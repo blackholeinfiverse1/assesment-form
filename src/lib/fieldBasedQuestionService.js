@@ -469,11 +469,40 @@ class FieldBasedQuestionService {
             weight: 1,
             is_primary: true
           }));
+          
+          // Try upsert first, fallback to individual inserts if constraint doesn't exist
           const { error: mapErr } = await supabase
             .from('question_field_mapping')
             .upsert(mappings, { onConflict: 'question_id,field_id' });
 
-          if (mapErr) {
+          if (mapErr && mapErr.code === '42P10') {
+            // Constraint doesn't exist, try individual inserts with conflict handling
+            console.log('Unique constraint not found, trying individual inserts...');
+            for (const mapping of mappings) {
+              try {
+                // Check if mapping already exists
+                const { data: existing } = await supabase
+                  .from('question_field_mapping')
+                  .select('id')
+                  .eq('question_id', mapping.question_id)
+                  .eq('field_id', mapping.field_id)
+                  .single();
+
+                if (!existing) {
+                  // Insert only if it doesn't exist
+                  const { error: insertErr } = await supabase
+                    .from('question_field_mapping')
+                    .insert([mapping]);
+                  
+                  if (insertErr) {
+                    console.warn('Failed to insert question field mapping:', insertErr);
+                  }
+                }
+              } catch (err) {
+                console.warn('Error handling question field mapping:', err);
+              }
+            }
+          } else if (mapErr) {
             console.warn('Failed to upsert AI question field mappings:', mapErr);
           }
         }
