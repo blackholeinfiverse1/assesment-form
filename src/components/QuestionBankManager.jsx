@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { BookOpen, Brain, Calculator, Code, Globe, Newspaper, Scroll, Plus, Edit2, Trash2, Search, Users, Tag, Filter, Settings } from 'lucide-react';
+import { BookOpen, Brain, Calculator, Code, Globe, Newspaper, Scroll, Plus, Edit2, Trash2, Search, Users, Tag, Filter, Settings, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ASSIGNMENT_CATEGORIES, DIFFICULTY_LEVELS } from '../data/assignment.js';
 import { supabase } from '../lib/supabaseClient';
@@ -36,12 +36,19 @@ const FIELD_COLORS = [
 
 const DEFAULT_EMOJIS = ['🔬', '💼', '🏛️', '⚕️', '🎨', '📚', '🌟', '🚀', '💡', '🎯', '🔥', '⭐', '🌈', '🎪', '🎭'];
 
-function QuestionCard({ question, questionFields, studyFields, onEdit, onDelete, onManageFields }) {
+function QuestionCard({ question, questionFields, studyFields, onEdit, onDelete, onManageFields, aiEnabled }) {
   const IconComponent = CATEGORY_ICONS[question.category] || BookOpen;
   const difficultyClass = DIFFICULTY_COLORS[question.difficulty] || DIFFICULTY_COLORS[DIFFICULTY_LEVELS.EASY];
+  const isAiQuestion = question.created_by === 'ai';
 
   return (
-    <div className="rounded-xl border border-white/20 bg-white/10 p-4 space-y-4">
+    <div 
+      className={`rounded-xl border border-white/20 ${isAiQuestion && !aiEnabled ? 'bg-gray-800/30' : 'bg-white/10'} p-4 space-y-4`}
+      style={{
+        // When AI is disabled and this is an AI question, use a dimmer background
+        backgroundColor: isAiQuestion && !aiEnabled ? 'rgba(100, 116, 139, 0.3)' : undefined
+      }}
+    >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2 flex-wrap">
           <IconComponent className="h-5 w-5 text-orange-400" />
@@ -49,9 +56,11 @@ function QuestionCard({ question, questionFields, studyFields, onEdit, onDelete,
           <span className={`text-xs px-2 py-1 rounded-full border ${difficultyClass}`}>
             {question.difficulty}
           </span>
-          {question.created_by === 'ai' && (
-            <span className="text-xs px-2 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-              AI Generated
+          {isAiQuestion && (
+            <span 
+              className={`text-xs px-2 py-1 rounded-full ${aiEnabled ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-gray-500/20 text-gray-300 border border-gray-500/30'}`}
+            >
+              {aiEnabled ? 'AI Generated' : 'AI Disabled'}
             </span>
           )}
         </div>
@@ -98,6 +107,11 @@ function QuestionCard({ question, questionFields, studyFields, onEdit, onDelete,
           })}
         </div>
       )}
+
+      {/* Question Content */}
+      <div className="text-sm text-white/80">
+        {question.content}
+      </div>
 
       <div className="space-y-3">
         <h4 className="text-white font-medium">{question.question_text}</h4>
@@ -152,6 +166,8 @@ export default function QuestionBankManager() {
   const [editingField, setEditingField] = useState(null);
   const [fieldDeleteConfirm, setFieldDeleteConfirm] = useState(null);
   const [stats, setStats] = useState({});
+  const [aiEnabled, setAiEnabled] = useState(true); // New state for AI toggle
+  const [showTooltip, setShowTooltip] = useState(false); // Tooltip state
 
   useEffect(() => {
     loadStudyFields();
@@ -162,7 +178,69 @@ export default function QuestionBankManager() {
   useEffect(() => {
     filterQuestions();
     calculateStats();
-  }, [questions, questionFieldMappings, studyFields, searchTerm, selectedCategory, selectedDifficulty, selectedField]);
+  }, [questions, questionFieldMappings, studyFields, searchTerm, selectedCategory, selectedDifficulty, selectedField, aiEnabled]); // Added aiEnabled to dependency array
+
+  async function loadQuestions() {
+    setLoading(true);
+    try {
+      // Get all questions, but filter out AI-generated ones if AI is disabled
+      const { data, error } = await supabase
+        .from('question_banks')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      
+      // Filter questions based on AI toggle
+      const filtered = (data || []).filter(q => {
+        // Always show admin-created questions
+        if (q.created_by === 'admin') return true;
+        // Show AI questions only if AI is enabled
+        return aiEnabled || false;
+      });
+      
+      setQuestions(filtered);
+    } catch (error) {
+      console.error('Error loading questions:', error);
+      toast.error('Failed to load questions from database');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function filterQuestions() {
+    let filtered = [...(questions || [])];
+
+    if (searchTerm) {
+      const s = searchTerm.toLowerCase();
+      filtered = filtered.filter(q =>
+        (q.question_text || '').toLowerCase().includes(s) ||
+        (q.explanation || '').toLowerCase().includes(s)
+      );
+    }
+
+    if (selectedCategory) {
+      filtered = filtered.filter(q => q.category === selectedCategory);
+    }
+
+    if (selectedDifficulty) {
+      filtered = filtered.filter(q => (q.difficulty || '').toLowerCase() === selectedDifficulty.toLowerCase());
+    }
+
+    if (selectedField) {
+      filtered = filtered.filter(q => {
+        const fields = questionFieldMappings[q.question_id] || [];
+        return fields.includes(selectedField);
+      });
+    }
+    
+    // Filter out AI-generated questions if AI is disabled
+    if (!aiEnabled) {
+      filtered = filtered.filter(q => q.created_by === 'admin');
+    }
+
+    setFilteredQuestions(filtered);
+  }
 
   async function loadStudyFields() {
     try {
@@ -316,23 +394,6 @@ export default function QuestionBankManager() {
     }
   }
 
-  async function loadQuestions() {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('question_banks')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      setQuestions(data || []);
-    } catch (error) {
-      console.error('Error loading questions:', error);
-      toast.error('Failed to load questions from database');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function loadQuestionFieldMappings() {
     try {
       const { data, error } = await supabase
@@ -365,7 +426,8 @@ export default function QuestionBankManager() {
       newStats[`field_${field.field_id}`] = { total: 0, easy: 0, medium: 0, hard: 0 };
     });
 
-    (questions || []).forEach(q => {
+    // Calculate stats based on filtered questions (which respect AI toggle)
+    (filteredQuestions || []).forEach(q => {
       // Category stats
       if (newStats[q.category]) {
         newStats[q.category].total++;
@@ -375,7 +437,7 @@ export default function QuestionBankManager() {
         else if (diff === 'hard') newStats[q.category].hard++;
       }
 
-      // Field stats
+      // Field stats - only for active questions
       const fields = questionFieldMappings[q.question_id] || [];
       fields.forEach(fieldId => {
         const key = `field_${fieldId}`;
@@ -390,35 +452,6 @@ export default function QuestionBankManager() {
     });
 
     setStats(newStats);
-  }
-
-  function filterQuestions() {
-    let filtered = [...(questions || [])];
-
-    if (searchTerm) {
-      const s = searchTerm.toLowerCase();
-      filtered = filtered.filter(q =>
-        (q.question_text || '').toLowerCase().includes(s) ||
-        (q.explanation || '').toLowerCase().includes(s)
-      );
-    }
-
-    if (selectedCategory) {
-      filtered = filtered.filter(q => q.category === selectedCategory);
-    }
-
-    if (selectedDifficulty) {
-      filtered = filtered.filter(q => (q.difficulty || '').toLowerCase() === selectedDifficulty.toLowerCase());
-    }
-
-    if (selectedField) {
-      filtered = filtered.filter(q => {
-        const fields = questionFieldMappings[q.question_id] || [];
-        return fields.includes(selectedField);
-      });
-    }
-
-    setFilteredQuestions(filtered);
   }
 
   async function saveQuestionFromModal() {
@@ -603,7 +636,7 @@ export default function QuestionBankManager() {
         // Add optional fields if they exist in the schema
         try {
           updatePayload.short_name = short_name;
-        } catch (e) {
+        } catch {
           console.log('short_name column may not exist, skipping');
         }
         
@@ -642,7 +675,7 @@ export default function QuestionBankManager() {
           insertPayload.subcategories = [];
           insertPayload.question_weights = {};
           insertPayload.difficulty_distribution = {};
-        } catch (e) {
+        } catch {
           console.log('Some optional columns may not exist');
         }
         
@@ -824,11 +857,38 @@ export default function QuestionBankManager() {
         <div>
           <h2 className="text-2xl font-bold text-white">Question Bank Manager</h2>
           <p className="text-white/70">Manage questions and assign them to specific study fields</p>
+          {/* AI Status Indicator */}
+          <div className={`mt-2 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium ${
+            aiEnabled 
+              ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30' 
+              : 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${
+              aiEnabled ? 'bg-orange-400' : 'bg-gray-400'
+            }`}></div>
+            AI Questions: {aiEnabled ? 'Enabled' : 'Disabled'}
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* AI Toggle Button */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 border border-white/20">
+            <span className="text-sm text-white">AI Questions:</span>
+            <button
+              onClick={() => setAiEnabled(!aiEnabled)}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
+                aiEnabled 
+                  ? 'bg-orange-500 text-white hover:bg-orange-600' 
+                  : 'bg-gray-500 text-gray-200 hover:bg-gray-400'
+              }`}
+              title={aiEnabled ? 'Click to disable AI-generated questions' : 'Click to enable AI-generated questions'}
+            >
+              {aiEnabled ? 'ON' : 'OFF'}
+            </button>
+          </div>
           <button
             onClick={() => setShowFieldSettings(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-colors"
+            title="Manage Fields"
           >
             <Settings className="w-4 h-4" />
             Manage Fields
@@ -839,6 +899,7 @@ export default function QuestionBankManager() {
               setShowForm(true);
             }}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 transition-colors"
+            title="Add Question"
           >
             <Plus className="w-4 h-4" />
             Add Question
@@ -850,6 +911,9 @@ export default function QuestionBankManager() {
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {studyFields.map(field => {
           const data = stats[`field_${field.field_id}`] || { total: 0, easy: 0, medium: 0, hard: 0 };
+          const aiQuestions = questions.filter(q => q.created_by === 'ai' && (questionFieldMappings[q.question_id] || []).includes(field.field_id)).length;
+          const _adminQuestions = data.total - aiQuestions;
+          
           return (
             <div key={field.field_id} className="rounded-xl border border-white/20 bg-white/10 p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -860,6 +924,13 @@ export default function QuestionBankManager() {
               <div className="text-xs text-white/60">
                 Easy: {data.easy} | Medium: {data.medium} | Hard: {data.hard}
               </div>
+              
+              {/* Show AI disabled indicator if AI is off */}
+              {!aiEnabled && (
+                <div className="mt-2 p-1 text-center text-xs bg-orange-500/10 text-orange-400 rounded">
+                  AI Questions Disabled
+                </div>
+              )}
             </div>
           );
         })}
@@ -868,7 +939,10 @@ export default function QuestionBankManager() {
       {/* Category Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {Object.entries(stats).filter(([key]) => !key.startsWith('field_')).map(([category, data]) => {
+          const aiQuestions = questions.filter(q => q.created_by === 'ai' && q.category === category).length;
+          const _adminQuestions = data.total - aiQuestions;
           const IconComponent = CATEGORY_ICONS[category] || BookOpen;
+          
           return (
             <div key={category} className="rounded-xl border border-white/20 bg-white/10 p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -877,89 +951,87 @@ export default function QuestionBankManager() {
               </div>
               <div className="text-2xl font-bold text-white mb-1">{data.total}</div>
               <div className="text-xs text-white/60">
-                Easy: {data.easy} | Medium: {data.medium} | Hard: {data.hard}
+                Admin: {_adminQuestions} | AI: {aiQuestions}
               </div>
+              
+              {/* Show AI disabled indicator if AI is off */}
+              {!aiEnabled && (
+                <div className="mt-2 p-1 text-center text-xs bg-orange-500/10 text-orange-400 rounded">
+                  AI Questions Disabled
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/50" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search questions..."
-              className="w-full pl-10 pr-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-            />
-          </div>
-        </div>
-        
-        <select
-          value={selectedField}
-          onChange={(e) => setSelectedField(e.target.value)}
-          className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
-        >
-          <option value="" className="bg-gray-900">All Fields</option>
-          {studyFields.map(field => (
-            <option key={field.field_id} value={field.field_id} className="bg-gray-900">
-              {field.icon} {field.name}
-            </option>
-          ))}
-        </select>
-
+      {/* Search and Filter */}
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          placeholder="Search questions..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="flex-1 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white"
+        />
         <select
           value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+          onChange={e => setSelectedCategory(e.target.value)}
+          className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white"
         >
-          <option value="" className="bg-gray-900">All Categories</option>
+          <option value="">All Categories</option>
           {Object.values(ASSIGNMENT_CATEGORIES).map(category => (
-            <option key={category} value={category} className="bg-gray-900">
+            <option key={category} value={category}>
               {category}
             </option>
           ))}
         </select>
-
         <select
           value={selectedDifficulty}
-          onChange={(e) => setSelectedDifficulty(e.target.value)}
-          className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+          onChange={e => setSelectedDifficulty(e.target.value)}
+          className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white"
         >
-          <option value="" className="bg-gray-900">All Difficulties</option>
+          <option value="">All Difficulties</option>
           {Object.values(DIFFICULTY_LEVELS).map(difficulty => (
-            <option key={difficulty} value={difficulty} className="bg-gray-900">
-              {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+            <option key={difficulty} value={difficulty}>
+              {difficulty}
+            </option>
+          ))}
+        </select>
+        <select
+          value={selectedField}
+          onChange={e => setSelectedField(e.target.value)}
+          className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white"
+        >
+          <option value="">All Fields</option>
+          {studyFields.map(field => (
+            <option key={field.field_id} value={field.field_id}>
+              {field.name}
             </option>
           ))}
         </select>
       </div>
 
-      {/* Questions Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredQuestions.map(question => (
-          <QuestionCard
-            key={question.question_id}
-            question={question}
-            questionFields={questionFieldMappings[question.question_id] || []}
-            studyFields={studyFields}
-            onEdit={handleEditQuestion}
-            onDelete={handleDeleteQuestion}
-            onManageFields={handleManageFields}
-          />
-        ))}
+      {/* Question List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredQuestions.map(question => {
+          const fields = questionFieldMappings[question.question_id] || [];
+          return (
+            <QuestionCard
+              key={question.question_id}
+              question={question}
+              questionFields={fields}
+              studyFields={studyFields}
+              onEdit={handleEditQuestion}
+              onDelete={handleDeleteQuestion}
+              onManageFields={handleManageFields}
+              aiEnabled={aiEnabled}
+            />
+          );
+        })}
       </div>
 
-      {filteredQuestions.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-white/70">No questions found matching your criteria.</p>
-        </div>
-      )}
-
+      {/* Modals and other UI components would continue here */}
       {/* Field Settings Modal */}
       {showFieldSettings && createPortal(
         <div 
@@ -974,7 +1046,7 @@ export default function QuestionBankManager() {
           <div 
             style={{
               background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%)',
-              backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.25)',
+              backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.25)',
               borderRadius: '20px', padding: '2rem', maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto'
             }}
             onClick={(e) => e.stopPropagation()}
@@ -992,7 +1064,7 @@ export default function QuestionBankManager() {
               <button 
                 onClick={() => setShowFieldSettings(false)}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255, 255, 255, 0.2)',
+                  background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
                   borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
                 }}
               >
@@ -1000,7 +1072,149 @@ export default function QuestionBankManager() {
               </button>
             </div>
 
-            {/* Add New Field Button */}
+            {/* Add AI Toggle with Tooltip */}
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ color: 'white', fontSize: '0.875rem' }}>Enable AI Generated Questions</span>
+                  <button
+                    onClick={() => setAiEnabled(!aiEnabled)}
+                    style={{
+                      background: aiEnabled ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.1)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                    }}
+                  >
+                    {aiEnabled ? 'On' : 'Off'}
+                  </button>
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setShowTooltip(!showTooltip)}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                    }}
+                  >
+                    <Info className="w-4 h-4" />
+                  </button>
+                  {showTooltip && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: 'rgba(255, 255, 255, 0.15)',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: '12px',
+                        padding: '0.5rem 1rem',
+                        color: 'rgba(255,255,255,0.85)',
+                        marginTop: '0.5rem',
+                        maxWidth: '200px',
+                        textAlign: 'center',
+                        zIndex: 1000
+                      }}
+                    >
+                      Enabling AI will allow the system to generate questions automatically.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Field List */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h4 style={{ color: 'white', fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem' }}>Fields</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {studyFields.map(field => (
+                  <div key={field.field_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ color: field.color, fontSize: '1.25rem' }}>{field.icon}</span>
+                      <span style={{ color: 'white', fontSize: '0.875rem' }}>{field.name}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        onClick={() => {
+                          setEditingField(field);
+                          setShowFieldSettings(true);
+                        }}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
+                          borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setFieldDeleteConfirm(field)}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
+                          borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Add/Edit Field Form */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h4 style={{ color: 'white', fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+                {editingField ? 'Edit Field' : 'Add New Field'}
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <label style={{ color: 'white', fontSize: '0.875rem' }}>Name</label>
+                  <input
+                    type="text"
+                    id="field-name"
+                    defaultValue={editingField?.name || ''}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <label style={{ color: 'white', fontSize: '0.875rem' }}>Icon</label>
+                  <input
+                    type="text"
+                    id="field-icon"
+                    defaultValue={editingField?.icon || ''}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <label style={{ color: 'white', fontSize: '0.875rem' }}>Description</label>
+                  <textarea
+                    id="field-description"
+                    defaultValue={editingField?.description || ''}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
+                      borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={saveFieldFromModal}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '12px', padding: '0.5rem 0.75rem', color: 'rgba(255,255,255,0.85)'
+                  }}
+                >
+                  {editingField ? 'Save Changes' : 'Add Field'}
+                </button>
+              </div>
+            </div>
+
+            // Add New Field Button
             <div style={{ marginBottom: '1.5rem' }}>
               <button
                 onClick={() => {
@@ -1073,107 +1287,17 @@ export default function QuestionBankManager() {
                   }}
                 />
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button
-                  onClick={() => {
-                    document.getElementById('field-form').style.display = 'none';
-                    setEditingField(null);
-                  }}
-                  style={{
-                    padding: '0.5rem 1rem', borderRadius: '8px',
-                    border: '1px solid rgba(255,255,255,0.25)', 
-                    background: 'rgba(255,255,255,0.12)', color: 'white'
-                  }}
-                >
-                  Cancel
-                </button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                   onClick={saveFieldFromModal}
                   style={{
-                    padding: '0.5rem 1rem', borderRadius: '8px',
-                    background: 'linear-gradient(135deg, #ea580c, #f97316)', 
+                    padding: '0.75rem 1rem', borderRadius: '12px',
+                    background: 'linear-gradient(135deg, #10b981, #059669)', 
                     color: 'white', border: 'none'
                   }}
                 >
-                  {editingField ? 'Update' : 'Add'} Field
+                  Save
                 </button>
-              </div>
-            </div>
-
-            {/* Existing Fields */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-              {studyFields.map(field => (
-                <div
-                  key={field.field_id}
-                  style={{
-                    padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)',
-                    background: 'rgba(255,255,255,0.05)'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '1.5rem' }}>{field.icon}</span>
-                      <span style={{ color: 'white', fontWeight: 600 }}>{field.name}</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.25rem' }}>
-                      <button
-                        onClick={() => {
-                          setEditingField(field);
-                          document.getElementById('field-form').style.display = 'block';
-                          document.getElementById('field-name').value = field.name;
-                          document.getElementById('field-icon').value = field.icon;
-                          document.getElementById('field-description').value = field.description || '';
-                        }}
-                        style={{
-                          padding: '0.25rem', borderRadius: '6px',
-                          background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white'
-                        }}
-                      >
-                        <Edit2 className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => setFieldDeleteConfirm(field)}
-                        style={{
-                          padding: '0.25rem', borderRadius: '6px',
-                          background: 'rgba(239,68,68,0.2)', border: 'none', color: '#ef4444'
-                        }}
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                  {field.description && (
-                    <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', margin: 0 }}>
-                      {field.description}
-                    </p>
-                  )}
-                  <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
-                    {(stats[`field_${field.field_id}`]?.total || 0)} questions assigned
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Emoji Suggestions */}
-            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
-              <h4 style={{ color: 'white', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Suggested Icons:</h4>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {DEFAULT_EMOJIS.map(emoji => (
-                  <button
-                    key={emoji}
-                    onClick={() => {
-                      const iconInput = document.getElementById('field-icon');
-                      if (iconInput) iconInput.value = emoji;
-                    }}
-                    style={{
-                      padding: '0.5rem', borderRadius: '8px', border: 'none',
-                      background: 'rgba(255,255,255,0.1)', fontSize: '1.2rem',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {emoji}
-                  </button>
-                ))}
               </div>
             </div>
           </div>

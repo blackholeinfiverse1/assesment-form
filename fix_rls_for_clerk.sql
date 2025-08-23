@@ -25,38 +25,50 @@ ALTER TABLE IF EXISTS admins DISABLE ROW LEVEL SECURITY;
 -- =====================================================
 
 -- Drop all existing policies that might be causing conflicts
+-- Include the new policy names that were created
 DROP POLICY IF EXISTS "Allow all operations for authenticated users" ON students;
 DROP POLICY IF EXISTS "Allow all operations for authenticated users on students" ON students;
 DROP POLICY IF EXISTS "Users can view their own student record" ON students;
 DROP POLICY IF EXISTS "Users can insert their own student record" ON students;
 DROP POLICY IF EXISTS "Users can update their own student record" ON students;
+DROP POLICY IF EXISTS "clerk_dev_students_all" ON students;
 
 DROP POLICY IF EXISTS "Allow all operations for authenticated users" ON form_configurations;
 DROP POLICY IF EXISTS "Allow all operations for authenticated users on form_configurations" ON form_configurations;
+DROP POLICY IF EXISTS "clerk_dev_form_configs_all" ON form_configurations;
 
 DROP POLICY IF EXISTS "Allow all operations for authenticated users on background_selections" ON background_selections;
+DROP POLICY IF EXISTS "clerk_dev_background_all" ON background_selections;
 
 DROP POLICY IF EXISTS "Anyone can view study fields" ON study_fields;
 DROP POLICY IF EXISTS "Only admins can modify study fields" ON study_fields;
 DROP POLICY IF EXISTS "Allow all operations on study_fields for development" ON study_fields;
 DROP POLICY IF EXISTS "Allow all operations for development" ON study_fields;
+DROP POLICY IF EXISTS "clerk_dev_study_fields_all" ON study_fields;
 
 DROP POLICY IF EXISTS "Anyone can view active questions" ON question_banks;
 DROP POLICY IF EXISTS "Admins can view all questions" ON question_banks;
 DROP POLICY IF EXISTS "Allow all operations on question_banks for development" ON question_banks;
+DROP POLICY IF EXISTS "clerk_dev_question_banks_all" ON question_banks;
 
 DROP POLICY IF EXISTS "Allow all operations on question_field_mapping for development" ON question_field_mapping;
+DROP POLICY IF EXISTS "clerk_dev_question_mapping_all" ON question_field_mapping;
+
+DROP POLICY IF EXISTS "clerk_dev_question_stats_all" ON question_usage_stats;
 
 DROP POLICY IF EXISTS "Users can view their own assignment attempts" ON assignment_attempts;
 DROP POLICY IF EXISTS "Users can insert their own assignment attempts" ON assignment_attempts;
 DROP POLICY IF EXISTS "Users can update their own assignment attempts" ON assignment_attempts;
+DROP POLICY IF EXISTS "clerk_dev_attempts_all" ON assignment_attempts;
 
 DROP POLICY IF EXISTS "Users can view their own assignment responses" ON assignment_responses;
 DROP POLICY IF EXISTS "Users can insert their own assignment responses" ON assignment_responses;
+DROP POLICY IF EXISTS "clerk_dev_responses_all" ON assignment_responses;
 
 DROP POLICY IF EXISTS "Allow all operations for development" ON admins;
 DROP POLICY IF EXISTS "Admins can read their own data" ON admins;
 DROP POLICY IF EXISTS "Allow admin creation" ON admins;
+DROP POLICY IF EXISTS "clerk_dev_admins_all" ON admins;
 
 -- =====================================================
 -- 3. CREATE DEVELOPMENT-FRIENDLY POLICIES

@@ -1,0 +1,101 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]: "[plugin:vite:react-babel]"
+    - generic [ref=e6]: "C:\\Users\\Microsoft\\Desktop\\frontend\\src\\components\\QuestionBankManager.jsx: Adjacent JSX elements must be wrapped in an enclosing tag. Did you want a JSX fragment <>...</>? (148:4) 151 |"
+  - generic [ref=e7]:
+    - text: "C:"
+    - generic [ref=e8] [cursor=pointer]: /Users/Microsoft/Desktop/frontend/src/components/QuestionBankManager.jsx:148:4
+  - generic [ref=e9]: "146 | )} 147 | </div> 148 | </div> | ^ 149 | ); 150 | }"
+  - generic [ref=e10]:
+    - text: at constructor (
+    - generic [ref=e11] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:367:19
+    - text: ) at JSXParserMixin.raise (
+    - generic [ref=e12] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:6627:19
+    - text: ) at JSXParserMixin.jsxParseElementAt (
+    - generic [ref=e13] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:4772:18
+    - text: ) at JSXParserMixin.jsxParseElement (
+    - generic [ref=e14] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:4779:17
+    - text: ) at JSXParserMixin.parseExprAtom (
+    - generic [ref=e15] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:4792:19
+    - text: ) at JSXParserMixin.parseExprSubscripts (
+    - generic [ref=e16] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:11076:23
+    - text: ) at JSXParserMixin.parseUpdate (
+    - generic [ref=e17] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:11061:21
+    - text: ) at JSXParserMixin.parseMaybeUnary (
+    - generic [ref=e18] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:11041:23
+    - text: ) at JSXParserMixin.parseMaybeUnaryOrPrivate (
+    - generic [ref=e19] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:10894:61
+    - text: ) at JSXParserMixin.parseExprOps (
+    - generic [ref=e20] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:10899:23
+    - text: ) at JSXParserMixin.parseMaybeConditional (
+    - generic [ref=e21] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:10876:23
+    - text: ) at JSXParserMixin.parseMaybeAssign (
+    - generic [ref=e22] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:10826:21
+    - text: ) at JSXParserMixin.parseExpressionBase (
+    - generic [ref=e23] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:10779:23
+    - text: ) at
+    - generic [ref=e24] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:10775:39
+    - text: at JSXParserMixin.allowInAnd (
+    - generic [ref=e25] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:12422:16
+    - text: ) at JSXParserMixin.parseExpression (
+    - generic [ref=e26] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:10775:17
+    - text: ) at JSXParserMixin.parseStatementContent (
+    - generic [ref=e27] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:12895:23
+    - text: ) at JSXParserMixin.parseStatementLike (
+    - generic [ref=e28] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:12767:17
+    - text: ) at JSXParserMixin.parseModuleItem (
+    - generic [ref=e29] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:12744:17
+    - text: ) at JSXParserMixin.parseBlockOrModuleBlockBody (
+    - generic [ref=e30] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:13316:36
+    - text: ) at JSXParserMixin.parseBlockBody (
+    - generic [ref=e31] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:13309:10
+    - text: ) at JSXParserMixin.parseProgram (
+    - generic [ref=e32] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:12625:10
+    - text: ) at JSXParserMixin.parseTopLevel (
+    - generic [ref=e33] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:12615:25
+    - text: ) at JSXParserMixin.parse (
+    - generic [ref=e34] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:14492:10
+    - text: ) at parse (
+    - generic [ref=e35] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\parser\lib\index.js:14526:38
+    - text: ) at parser (
+    - generic [ref=e36] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\core\lib\parser\index.js:41:34
+    - text: ) at parser.next (<anonymous>) at normalizeFile (
+    - generic [ref=e37] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\core\lib\transformation\normalize-file.js:64:37
+    - text: ) at normalizeFile.next (<anonymous>) at run (
+    - generic [ref=e38] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\core\lib\transformation\index.js:22:50
+    - text: ) at run.next (<anonymous>) at transform (
+    - generic [ref=e39] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\core\lib\transform.js:22:33
+    - text: ) at transform.next (<anonymous>) at step (
+    - generic [ref=e40] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\gensync\index.js:261:32
+    - text: ) at
+    - generic [ref=e41] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\gensync\index.js:273:13
+    - text: at async.call.result.err.err (
+    - generic [ref=e42] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\gensync\index.js:223:11
+    - text: ) at
+    - generic [ref=e43] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\gensync\index.js:189:28
+    - text: at
+    - generic [ref=e44] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\@babel\core\lib\gensync-utils\async.js:67:7
+    - text: at
+    - generic [ref=e45] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\gensync\index.js:113:33
+    - text: at step (
+    - generic [ref=e46] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\gensync\index.js:287:14
+    - text: ) at
+    - generic [ref=e47] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\gensync\index.js:273:13
+    - text: at async.call.result.err.err (
+    - generic [ref=e48] [cursor=pointer]: C:\Users\Microsoft\Desktop\frontend\node_modules\gensync\index.js:223:11
+    - text: )
+  - generic [ref=e49]:
+    - text: Click outside, press
+    - generic [ref=e50]: Esc
+    - text: key, or fix the code to dismiss.
+    - text: You can also disable this overlay by setting
+    - code [ref=e51]: server.hmr.overlay
+    - text: to
+    - code [ref=e52]: "false"
+    - text: in
+    - code [ref=e53]: vite.config.js
+    - text: .
+```

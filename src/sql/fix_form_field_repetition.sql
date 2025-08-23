@@ -138,7 +138,10 @@ SELECT
     true as include_background_selection
 FROM form_configurations 
 WHERE is_active = true
-ON CONFLICT DO NOTHING;
+  AND NOT EXISTS (
+    SELECT 1 FROM enhanced_form_configurations 
+    WHERE base_config_id = form_configurations.id
+  );
 
 -- Update RLS policies for enhanced_form_configurations
 DROP POLICY IF EXISTS "enhanced_form_configurations_select_policy" ON enhanced_form_configurations;
@@ -154,7 +157,8 @@ CREATE POLICY "enhanced_form_configurations_delete_policy" ON enhanced_form_conf
 -- Enable RLS
 ALTER TABLE enhanced_form_configurations ENABLE ROW LEVEL SECURITY;
 
--- Create helper function to get enhanced form configuration
+-- Create helper function to get enhanced form configuration (replace if exists)
+DROP FUNCTION IF EXISTS get_enhanced_form_config(TEXT);
 CREATE OR REPLACE FUNCTION get_enhanced_form_config(config_id TEXT DEFAULT NULL)
 RETURNS JSONB AS $$
 DECLARE
@@ -189,7 +193,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create helper function to prevent field duplication
+-- Create helper function to prevent field duplication (handle dependencies correctly)
+-- First drop constraint that depends on the function
+ALTER TABLE form_configurations 
+DROP CONSTRAINT IF EXISTS check_unique_field_ids;
+
+-- Now we can safely drop and recreate the function
+DROP FUNCTION IF EXISTS validate_form_fields(JSONB);
 CREATE OR REPLACE FUNCTION validate_form_fields(fields JSONB)
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -215,7 +225,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Add constraint to prevent duplicate fields
+-- Now add the constraint that uses the function
 ALTER TABLE form_configurations 
 ADD CONSTRAINT check_unique_field_ids 
 CHECK (validate_form_fields(fields));

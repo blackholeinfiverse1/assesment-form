@@ -37,6 +37,16 @@ The Gurukul learning flow (Seed → Tree → Sky) lives under `src/components/Gu
 
 Schema reference: `gurukulSchemaV1_1` exported from `src/data/gurukul.js` mirrors the PM-provided JSON structure for v1.1.
 
+## AI Question Toggle Feature
+
+The admin panel now includes an AI question toggle in the Question Bank Manager:
+
+- When enabled (default), students see a mix of AI-generated and admin-created questions
+- When disabled, students only see admin-created questions
+- The toggle can be found in the Field Settings modal in the admin panel
+- AI-generated questions are marked with "AI Generated" in the UI
+- When AI is disabled, AI questions are dimmed and marked "AI Disabled"
+
 ## Auth (Clerk)
 
 Optional: add to `.env.local` to enable Clerk auth UI and gate `/dashboard`:
