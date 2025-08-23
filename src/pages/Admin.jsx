@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { createPortal } from 'react-dom';
 import { Trash2 } from 'lucide-react';
 import toast from "react-hot-toast";
@@ -120,6 +120,28 @@ export default function Admin() {
   const [form, setForm] = useState(initialForm);
   const [isEditing, setIsEditing] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  
+  const portalRootRef = useRef(null);
+  
+  useEffect(() => {
+    // Create a portal root element if it doesn't exist
+    const portalRoot = document.getElementById('portal-root');
+    if (!portalRoot) {
+      const newPortalRoot = document.createElement('div');
+      newPortalRoot.id = 'portal-root';
+      document.body.appendChild(newPortalRoot);
+      portalRootRef.current = newPortalRoot;
+    } else {
+      portalRootRef.current = portalRoot;
+    }
+    
+    // Cleanup
+    return () => {
+      if (portalRootRef.current && !document.getElementById('portal-root')) {
+        document.body.removeChild(portalRootRef.current);
+      }
+    };
+  }, []);
 
   // Form configuration management
   const [activeTab, setActiveTab] = useState("students");
@@ -283,8 +305,11 @@ export default function Admin() {
   }
 
   function openEdit(s) {
+    console.log('🛠️ Opening edit for student:', s);
+    console.log('📋 Student responses data:', s.responses);
+    
     const responses = s.responses || {};
-    setForm({
+    const formData = {
       id: s.id,
       user_id: s.user_id || "",
       name: s.name || "",
@@ -297,13 +322,26 @@ export default function Admin() {
       phone: responses.phone || "",
       education_level: responses.education_level || "",
       field_of_study: responses.field_of_study || "",
-      current_skills: responses.current_skills?.join(", ") || "",
-      interests: responses.interests?.join(", ") || "",
+      current_skills: Array.isArray(responses.current_skills) 
+        ? responses.current_skills.join(", ") 
+        : typeof responses.current_skills === 'string' 
+          ? responses.current_skills 
+          : "",
+      interests: responses.interests ? 
+        (Array.isArray(responses.interests)
+          ? responses.interests.join(", ")
+          : typeof responses.interests === 'string'
+            ? responses.interests
+            : "")
+        : "",
       goals: responses.goals || "",
       preferred_learning_style: responses.preferred_learning_style || "",
       availability_per_week_hours: responses.availability_per_week_hours || "",
       experience_years: responses.experience_years || "",
-    });
+    };
+    
+    console.log('📝 Setting form data to:', formData);
+    setForm(formData);
     setIsEditing(true);
     setDrawerOpen(true);
   }
@@ -317,6 +355,11 @@ export default function Admin() {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    console.log('🔧 Admin Form Submission Debug:');
+    console.log('📝 Form data:', form);
+    console.log('✏️ Is Editing:', isEditing);
+    console.log('🔑 Student ID for update:', form.id);
 
     const payload = {
       user_id: form.user_id || null,
@@ -352,30 +395,57 @@ export default function Admin() {
       updated_at: new Date().toISOString(),
     };
 
+    console.log('📦 Payload to send:', payload);
+
     const query = supabase.from(SUPABASE_TABLE);
 
     const loadingToast = toast.loading(
       isEditing ? "Updating student..." : "Creating student..."
     );
 
-    const { error: err } = isEditing
-      ? await query.update(payload).eq("id", form.id)
-      : await query.insert(payload);
+    try {
+      let result;
+      if (isEditing) {
+        console.log('🔄 Performing UPDATE operation for ID:', form.id);
+        result = await query.update(payload).eq("id", form.id);
+        console.log('📄 Update result:', result);
+      } else {
+        console.log('➕ Performing INSERT operation');
+        result = await query.insert(payload);
+        console.log('📄 Insert result:', result);
+      }
 
-    if (err) {
-      toast.error(err.message, { id: loadingToast });
-      setError(err.message);
-    } else {
-      toast.success(
-        isEditing
-          ? "Student updated successfully"
-          : "Student created successfully",
-        { id: loadingToast }
-      );
-      setDrawerOpen(false);
-      setForm(initialForm);
-      fetchStudents();
+      const { data, error: err } = result;
+
+      if (err) {
+        console.error('❌ Database operation failed:', err);
+        console.error('🔍 Error details:', {
+          message: err.message,
+          details: err.details,
+          hint: err.hint,
+          code: err.code
+        });
+        toast.error(`Database Error: ${err.message}`, { id: loadingToast });
+        setError(`Database Error: ${err.message} (${err.code})`);
+      } else {
+        console.log('✅ Database operation successful!');
+        console.log('📊 Returned data:', data);
+        toast.success(
+          isEditing
+            ? "Student updated successfully"
+            : "Student created successfully",
+          { id: loadingToast }
+        );
+        setDrawerOpen(false);
+        setForm(initialForm);
+        fetchStudents();
+      }
+    } catch (error) {
+      console.error('💥 Unexpected error during database operation:', error);
+      toast.error(`Unexpected Error: ${error.message}`, { id: loadingToast });
+      setError(`Unexpected Error: ${error.message}`);
     }
+
     setLoading(false);
   }
 
@@ -961,7 +1031,8 @@ export default function Admin() {
                   </div>
                 </form>
               </div>
-            </div>
+            </div>,
+          document.body
           )}
         </>
       )}
