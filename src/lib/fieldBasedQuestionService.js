@@ -13,6 +13,25 @@ class FieldBasedQuestionService {
     this.usedQuestions = new Set();
   }
 
+  // Resolve a category input (id or name) to { categoryId, name }
+  async resolveCategory(categoryInput) {
+    try {
+      if (!categoryInput) return { categoryId: null, name: null };
+      await DynamicQuestionCategoryService.initialize();
+      let cat = await DynamicQuestionCategoryService.getCategoryById(categoryInput);
+      if (cat) return { categoryId: cat.category_id, name: cat.name };
+      cat = await DynamicQuestionCategoryService.getCategoryByName(categoryInput);
+      if (cat) return { categoryId: cat.category_id, name: cat.name };
+      const mappedId = DynamicQuestionCategoryService.mapOldCategoryToId(categoryInput);
+      cat = await DynamicQuestionCategoryService.getCategoryById(mappedId);
+      if (cat) return { categoryId: cat.category_id, name: cat.name };
+      return { categoryId: null, name: String(categoryInput) };
+    } catch (e) {
+      console.warn('Category resolution failed:', e);
+      return { categoryId: null, name: String(categoryInput || '') };
+    }
+  }
+
   /**
    * Generate questions based on student's study field
    * @param {Object} studentData - Student's background information
@@ -25,11 +44,15 @@ class FieldBasedQuestionService {
       const studyField = detectStudyFieldFromBackground(studentData);
       // Build education level tags for filtering (e.g., level_9..12, level_undergraduate, level_graduate, level_postgraduate)
       const levelTags = this.getStudentLevelTags(studentData);
+      // Prefer explicit field from intake/background for DB mapping; fallback to detected field
+      const mappingFieldId = studentData?.background_field_of_study || studentData?.responses?.field_of_study || studyField;
+      console.log(`📌 Mapping field for DB queries: ${mappingFieldId} (detected: ${studyField})`);
 
       // A category preference could be in responses.question_category or derived elsewhere
-      const preferredCategory = studentData?.responses?.question_category || null;
+      const preferredCategoryRaw = studentData?.responses?.question_category || null;
+      const strictCategory = !!preferredCategoryRaw;
 
-      console.log(`🎯 Detected study field: ${studyField}, levels: ${levelTags.join(',') || 'N/A'}, preferredCategory: ${preferredCategory || 'auto'}`);
+      console.log(`🎯 Detected study field: ${studyField}, levels: ${levelTags.join(',') || 'N/A'}, preferredCategory: ${preferredCategoryRaw || 'auto'}`);
 
       // Get weights and difficulty distribution for the field
       const questionWeights = getQuestionWeightsForField(studyField);
@@ -40,7 +63,7 @@ class FieldBasedQuestionService {
 
       // Primary category = highest weighted category for the field, unless student picked a specific category
       const [autoPrimaryCategory] = Object.entries(questionWeights).sort((a, b) => b[1] - a[1])[0];
-      const primaryCategory = preferredCategory || autoPrimaryCategory;
+      const primaryCategory = preferredCategoryRaw || autoPrimaryCategory;
 
       // Decide high-priority admin question count: 5 for <=10 total, else up to 10
       const highPriorityCount = totalQuestions <= 10
@@ -90,7 +113,7 @@ class FieldBasedQuestionService {
       for (const [difficulty, count] of Object.entries(adminCounts)) {
         if (count <= 0) continue;
         // Prefer field-mapped questions with grade filter
-        let dbQs = await this.getFieldMappedQuestionsFromDatabase(studyField, primaryCategory, difficulty, count, levelTags);
+        let dbQs = await this.getFieldMappedQuestionsFromDatabase(mappingFieldId, primaryCategory, difficulty, count, levelTags);
         // If not enough, fallback to category-only admin questions filtered by education level
         if (dbQs.length < count) {
           const topUp = await this.getQuestionsFromDatabase(primaryCategory, difficulty, count - dbQs.length, levelTags);
@@ -129,14 +152,17 @@ class FieldBasedQuestionService {
         for (const [difficulty, count] of Object.entries(aiCounts)) {
           if (count <= 0) continue;
           try {
-            const aiQs = await grokService.generateUniqueQuestions(
-              primaryCategory,
+            const aiCategoryLabel = `${primaryCategory} | field:${mappingFieldId} | level:${(levelTags||[]).join(',') || 'any'}`;
+            const aiQsRaw = await grokService.generateUniqueQuestions(
+              aiCategoryLabel,
               difficulty,
               count,
               usedQuestionTexts
             );
+            // Remap AI questions' category back to the selected category for consistent storage/display
+            const aiQs = aiQsRaw.map(q => ({ ...q, category: primaryCategory }));
             // Persist AI-generated questions for admin visibility and future reuse
-            await this.storeGeneratedQuestions(aiQs, studyField, primaryCategory, difficulty);
+            await this.storeGeneratedQuestions(aiQs, mappingFieldId, primaryCategory, difficulty);
 
             aiQs.forEach(q => usedQuestionTexts.add(normalizeText(q.question_text)));
             aiQuestions.push(...aiQs);
@@ -211,6 +237,74 @@ class FieldBasedQuestionService {
           }));
           picked.forEach(p => usedTexts.add((p.question_text || '').toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim()));
           combined = combined.concat(picked);
+        }
+      }
+
+      // If strict category chosen and still short, force AI generation even if globally disabled
+      if (strictCategory && combined.length < totalQuestions) {
+        const remaining = totalQuestions - combined.length;
+        const usedTexts = new Set(combined.map(q => (q.question_text || '').toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim()));
+        const aiCounts = splitByDifficulty(remaining);
+        for (const [diff, cnt] of Object.entries(aiCounts)) {
+          if (cnt <= 0) continue;
+          try {
+            const aiLabel = `${primaryCategory} | field:${mappingFieldId} | level:${(levelTags||[]).join(',') || 'any'}`;
+            const aiQsRaw = await grokService.generateUniqueQuestions(aiLabel, diff, cnt, usedTexts);
+            const aiQs = aiQsRaw.map(q => ({ ...q, category: primaryCategory }));
+            await this.storeGeneratedQuestions(aiQs, mappingFieldId, primaryCategory, diff);
+            aiQs.forEach(q => usedTexts.add((q.question_text || '').toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim()));
+            combined.push(...aiQs);
+          } catch (e) {
+            console.warn(`⚠️ Forced AI generation failed for ${primaryCategory} - ${diff}: ${e.message}`);
+          }
+        }
+      }
+
+      // Curated bank fallback if DB/AI were insufficient (works even when AI is disabled)
+      if (!strictCategory && combined.length < totalQuestions) {
+        const remaining = totalQuestions - combined.length;
+        const curatedCounts = splitByDifficulty(remaining);
+        for (const [diff, count] of Object.entries(curatedCounts)) {
+          if (count <= 0) continue;
+          try {
+            const fromBank = await this.getQuestionsForCategoryAndDifficulty(primaryCategory, diff, count);
+            combined.push(...fromBank);
+            if (combined.length >= totalQuestions) break;
+          } catch (e) {
+            console.warn(`⚠️ Curated bank fallback failed for ${primaryCategory} - ${diff}: ${e.message}`);
+          }
+        }
+      }
+
+      // If still not enough, broaden to other categories based on field weights
+      if (!strictCategory && combined.length < totalQuestions) {
+        const remainingNeeded = totalQuestions - combined.length;
+        const categoriesByWeight = Object.entries(questionWeights)
+          .sort((a, b) => b[1] - a[1])
+          .map(([c]) => c);
+        const fillOrder = [DIFFICULTY_LEVELS.MEDIUM, DIFFICULTY_LEVELS.EASY, DIFFICULTY_LEVELS.HARD];
+        const existingNormTexts = new Set(
+          combined.map(q => (q.question_text || '').toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim())
+        );
+        let added = 0;
+        for (const diff of fillOrder) {
+          if (added >= remainingNeeded) break;
+          for (const cat of categoriesByWeight) {
+            if (added >= remainingNeeded) break;
+            try {
+              const batch = await this.getQuestionsForCategoryAndDifficulty(cat, diff, (remainingNeeded - added));
+              for (const q of batch) {
+                const norm = (q.question_text || '').toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+                if (existingNormTexts.has(norm)) continue;
+                combined.push(q);
+                existingNormTexts.add(norm);
+                added++;
+                if (added >= remainingNeeded) break;
+              }
+            } catch (e) {
+              console.warn(`⚠️ Expanded curated fallback failed for ${cat} - ${diff}: ${e.message}`);
+            }
+          }
         }
       }
 
@@ -394,9 +488,18 @@ class FieldBasedQuestionService {
       let query = supabase
         .from('question_banks')
         .select('*')
-        .eq('category', category)
-        .eq('difficulty', difficulty)
+        .ilike('difficulty', difficulty)
         .eq('is_active', true);
+
+      // Apply category filter (category_id preferred, fallback to legacy name)
+      try {
+        const { categoryId, name: categoryName } = await this.resolveCategory(category);
+        if (categoryId) {
+          query = query.eq('category_id', categoryId);
+        } else {
+          query = query.eq('category', categoryName || category);
+        }
+      } catch {}
 
       // Apply education level filtering if provided
       if (Array.isArray(levelTags) && levelTags.length > 0) {
@@ -418,17 +521,41 @@ class FieldBasedQuestionService {
       // If not enough and level filter was applied, try without level as fallback
       let pool = data || [];
       if (pool.length < count && Array.isArray(levelTags) && levelTags.length > 0) {
-        const { data: noLevelData, error: noLevelErr } = await supabase
+        const r = await this.resolveCategory(category);
+        let noLevelQuery = supabase
           .from('question_banks')
           .select('*')
-          .eq('category', category)
-          .eq('difficulty', difficulty)
+          .ilike('difficulty', difficulty)
           .eq('is_active', true)
           .limit(count * 2);
+        noLevelQuery = r.categoryId
+          ? noLevelQuery.eq('category_id', r.categoryId)
+          : noLevelQuery.eq('category', r.name || category);
+        const { data: noLevelData, error: noLevelErr } = await noLevelQuery;
         if (!noLevelErr && noLevelData) {
           // Merge unique by question_id
           const ids = new Set(pool.map(q => q.question_id));
           noLevelData.forEach(q => { if (!ids.has(q.question_id)) pool.push(q); });
+        }
+      }
+      // Final fallback: ignore difficulty, keep category only
+      if (pool.length < count) {
+        const r2 = await this.resolveCategory(category);
+        let catOnlyQuery = supabase
+          .from('question_banks')
+          .select('*')
+          .eq('is_active', true)
+          .limit(count * 3);
+        catOnlyQuery = r2.categoryId
+          ? catOnlyQuery.eq('category_id', r2.categoryId)
+          : catOnlyQuery.eq('category', r2.name || category);
+        if (Array.isArray(levelTags) && levelTags.length > 0) {
+          catOnlyQuery = catOnlyQuery.overlaps('tags', levelTags);
+        }
+        const { data: catOnlyData, error: catOnlyErr } = await catOnlyQuery;
+        if (!catOnlyErr && catOnlyData) {
+          const ids2 = new Set(pool.map(q => q.question_id));
+          catOnlyData.forEach(q => { if (!ids2.has(q.question_id)) pool.push(q); });
         }
       }
 
@@ -468,9 +595,18 @@ class FieldBasedQuestionService {
         .from('question_banks')
         .select('*')
         .in('question_id', ids)
-        .eq('category', category)
-        .eq('difficulty', difficulty)
+        .ilike('difficulty', difficulty)
         .eq('is_active', true);
+
+      // Apply category filter (category_id preferred, fallback to legacy name)
+      try {
+        const { categoryId, name: categoryName } = await this.resolveCategory(category);
+        if (categoryId) {
+          query = query.eq('category_id', categoryId);
+        } else {
+          query = query.eq('category', categoryName || category);
+        }
+      } catch {}
 
       if (Array.isArray(levelTags) && levelTags.length > 0) {
         query = query.overlaps('tags', levelTags);
@@ -487,17 +623,42 @@ class FieldBasedQuestionService {
       let pool = data || [];
       // If not enough and level filter applied, try without level
       if (pool.length < count && Array.isArray(levelTags) && levelTags.length > 0) {
-        const { data: noLevelData, error: noLevelErr } = await supabase
+        const r = await this.resolveCategory(category);
+        let noLevelQuery = supabase
           .from('question_banks')
           .select('*')
           .in('question_id', ids)
-          .eq('category', category)
-          .eq('difficulty', difficulty)
+          .ilike('difficulty', difficulty)
           .eq('is_active', true)
           .limit(count * 2);
+        noLevelQuery = r.categoryId
+          ? noLevelQuery.eq('category_id', r.categoryId)
+          : noLevelQuery.eq('category', r.name || category);
+        const { data: noLevelData, error: noLevelErr } = await noLevelQuery;
         if (!noLevelErr && noLevelData) {
           const idset = new Set(pool.map(q => q.question_id));
           noLevelData.forEach(q => { if (!idset.has(q.question_id)) pool.push(q); });
+        }
+      }
+      // Final fallback: ignore difficulty, keep category only (still restricted to mapped ids)
+      if (pool.length < count) {
+        const r2 = await this.resolveCategory(category);
+        let catOnlyQuery = supabase
+          .from('question_banks')
+          .select('*')
+          .in('question_id', ids)
+          .eq('is_active', true)
+          .limit(count * 3);
+        catOnlyQuery = r2.categoryId
+          ? catOnlyQuery.eq('category_id', r2.categoryId)
+          : catOnlyQuery.eq('category', r2.name || category);
+        if (Array.isArray(levelTags) && levelTags.length > 0) {
+          catOnlyQuery = catOnlyQuery.overlaps('tags', levelTags);
+        }
+        const { data: catOnlyData, error: catOnlyErr } = await catOnlyQuery;
+        if (!catOnlyErr && catOnlyData) {
+          const ids2 = new Set(pool.map(q => q.question_id));
+          catOnlyData.forEach(q => { if (!ids2.has(q.question_id)) pool.push(q); });
         }
       }
 
@@ -535,18 +696,20 @@ class FieldBasedQuestionService {
 
       // Prepare upsert payload for question_banks
       const nowIso = new Date().toISOString();
+      const { categoryId: resolvedCategoryId, name: resolvedCategoryName } = await this.resolveCategory(category);
       const payload = generatedQuestions.map((q) => {
         // Derive a deterministic question_id from text + category + difficulty
-        const base = `${(q.question_text || '').toLowerCase()}|${category}|${difficulty}`;
+        const base = `${(q.question_text || '').toLowerCase()}|${resolvedCategoryName || category}|${difficulty}`;
         let hash = 0;
         for (let i = 0; i < base.length; i++) {
           hash = ((hash << 5) - hash) + base.charCodeAt(i);
           hash |= 0;
         }
-        const question_id = `AI_${category}_${difficulty}_${Math.abs(hash)}`;
+        const question_id = `AI_${(resolvedCategoryName || category)}_${difficulty}_${Math.abs(hash)}`;
         return {
           question_id,
-          category,
+          category: resolvedCategoryName || category,
+          category_id: resolvedCategoryId || null,
           difficulty,
           question_text: q.question_text,
           options: q.options,

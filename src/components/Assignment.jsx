@@ -308,10 +308,20 @@ export default function Assignment({ onComplete, userId = null, userEmail = null
       
       // Generate questions based on student's field
       progressCallback('Selecting field-appropriate questions...', 70);
-      const questions = await fieldBasedQuestionService.generateQuestionsForStudent(
+      const rawQuestions = await fieldBasedQuestionService.generateQuestionsForStudent(
         studentData,
         ASSIGNMENT_CONFIG.TOTAL_QUESTIONS
       );
+      // Normalize questions to ensure required fields and validate non-empty list
+      const questions = Array.isArray(rawQuestions)
+        ? rawQuestions.map((q, index) => ({
+            ...q,
+            id: q?.id ?? q?.question_id ?? q?.questionId ?? `q_${index + 1}`
+          }))
+        : [];
+      if (!questions.length) {
+        throw new Error('questions_generation_failed: no questions available');
+      }
 
       progressCallback('Finalizing assignment...', 90);
 
