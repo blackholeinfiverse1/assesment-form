@@ -102,8 +102,6 @@ const FieldEditor = ({
   onMoveDown,
   canMoveUp,
   canMoveDown,
-  fieldOptions,
-  categoryOptions,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [localField, setLocalField] = useState(field);
@@ -307,45 +305,7 @@ const FieldEditor = ({
             />
           </div>
 
-          {/* Dedicated classification section */}
-          <div className="p-4 rounded-xl border border-orange-400/30 bg-orange-500/10">
-            <div className="text-white font-semibold mb-3">Field Classification</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="label">Study Field</label>
-                <select
-                  value={localField.study_field_id || ""}
-                  onChange={(e) => handleChange("study_field_id", e.target.value)}
-                  className="input"
-                  required
-                >
-                  <option value="">Select study field</option>
-                  {fieldOptions?.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="label">Question Category</label>
-                <select
-                  value={localField.category_id || ""}
-                  onChange={(e) => handleChange("category_id", e.target.value)}
-                  className="input"
-                  required
-                >
-                  <option value="">Select category</option>
-                  {categoryOptions?.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
+          
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2">
               <input
@@ -919,8 +879,6 @@ export default function FormBuilder({
                 onMoveDown={() => moveField(index, "down")}
                 canMoveUp={index > 0}
                 canMoveDown={index < config.fields.length - 1}
-                fieldOptions={fieldOptions}
-                categoryOptions={categoryOptions}
               />
             ))}
 
