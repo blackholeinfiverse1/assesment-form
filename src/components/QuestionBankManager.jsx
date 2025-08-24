@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
 import { supabase } from '../lib/supabaseClient';
-import { Plus, Settings, Search, Filter, Brain, Code, Calculator, MessageCircle, Globe, Scroll, Newspaper, BookOpen, HelpCircle, AlertCircle, Users, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Settings, Search, Filter, Brain, Code, Calculator, MessageCircle, Globe, Scroll, Newspaper, BookOpen, HelpCircle, AlertCircle, Users, Edit2, Trash2, ChevronDown } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { DynamicQuestionCategoryService } from '../lib/dynamicQuestionCategoryService';
 import { aiSettingsService } from '../lib/aiSettingsService';
@@ -42,6 +42,9 @@ const DIFFICULTY_LEVELS = {
   MEDIUM: 'Medium',
   HARD: 'Hard'
 };
+
+// Supported school grades for targeting (extend as needed)
+const GRADES = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 
 const DIFFICULTY_COLORS = {
   [DIFFICULTY_LEVELS.EASY]: 'text-green-400 bg-green-400/10 border-green-400/20',
@@ -197,6 +200,19 @@ export default function QuestionBankManager() {
   const [stats, setStats] = useState({});
   const [aiEnabled, setAiEnabled] = useState(true); // This will be updated with global setting
   const [showTooltip, setShowTooltip] = useState(false); // Tooltip state
+  // Question form state
+  const [qForm, setQForm] = useState({
+    question_text: '',
+    options: ['', '', '', ''],
+    correct_answer: '',
+    category: '',
+    difficulty: DIFFICULTY_LEVELS.EASY,
+    explanation: '',
+    vedic_connection: '',
+    modern_application: '',
+    selectedFieldIds: [],
+    selectedLevel: '' // '9','10','11','12','undergraduate','graduate','postgraduate'
+  });
 
   // Load AI settings on component mount
   useEffect(() => {
@@ -375,24 +391,76 @@ export default function QuestionBankManager() {
 
   async function handleAddQuestion(questionData) {
     try {
+      // Merge education level tag(s) into tags array
+      const level = questionData.selectedLevel || '';
+      const tagsToAdd = [];
+      if (level) {
+        if (/^(9|10|11|12)$/.test(level)) {
+          // Add both new and legacy tags for numeric grades
+          tagsToAdd.push(`level_${level}`);
+          tagsToAdd.push(`grade_${level}`);
+        } else {
+          // Add education level tags
+          tagsToAdd.push(`level_${level}`);
+        }
+      }
+      const mergedTags = Array.from(new Set([...(questionData.tags || []), ...tagsToAdd]));
+
+      // Whitelist permitted columns for question_banks upsert
       const payload = {
-        ...questionData,
-        question_id: questionData.question_id || `${questionData.category.toLowerCase()}_${Date.now()}`,
+        question_id: questionData.question_id || `${(questionData.category || 'question').toLowerCase().replace(/\s+/g,'_')}_${Date.now()}`,
+        category: String(questionData.category || '').trim(),
+        difficulty: String(questionData.difficulty || DIFFICULTY_LEVELS.EASY),
+        question_text: String(questionData.question_text || '').trim(),
+        options: Array.isArray(questionData.options) ? questionData.options.map(o => String(o || '')) : [],
+        correct_answer: String(questionData.correct_answer || '').trim(),
+        explanation: String(questionData.explanation || '').trim(),
+        vedic_connection: String(questionData.vedic_connection || ''),
+        modern_application: String(questionData.modern_application || ''),
+        tags: Array.isArray(mergedTags) ? mergedTags : [],
         is_active: true,
         created_by: 'admin',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
 
+      // Upsert the question
       const { error } = await supabase
         .from('question_banks')
         .upsert(payload);
 
       if (error) throw error;
 
+      // Manage field mappings if provided
+      if (Array.isArray(questionData.selectedFieldIds)) {
+        // Clear existing mappings first
+        await supabase
+          .from('question_field_mapping')
+          .delete()
+          .eq('question_id', payload.question_id);
+
+        if (questionData.selectedFieldIds.length > 0) {
+          const mappings = questionData.selectedFieldIds.map(fieldId => ({
+            question_id: payload.question_id,
+            field_id: fieldId
+          }));
+          const { error: mapErr } = await supabase
+            .from('question_field_mapping')
+            .insert(mappings);
+          if (mapErr) throw mapErr;
+        }
+      }
+
       toast.success(editingQuestion ? 'Question updated successfully' : 'Question added successfully');
       setShowForm(false);
       setEditingQuestion(null);
+      // Reset form state
+      setQForm({
+        question_text: '', options: ['', '', '', ''], correct_answer: '',
+        category: '', difficulty: DIFFICULTY_LEVELS.EASY,
+        explanation: '', vedic_connection: '', modern_application: '',
+        selectedFieldIds: [], selectedLevel: ''
+      });
       loadData();
     } catch (error) {
       console.error('Error saving question:', error);
@@ -529,6 +597,18 @@ export default function QuestionBankManager() {
             <button
               onClick={() => {
                 setEditingQuestion(null);
+                setQForm({
+                  question_text: '',
+                  options: ['', '', '', ''],
+                  correct_answer: '',
+                  category: '',
+                  difficulty: DIFFICULTY_LEVELS.EASY,
+                  explanation: '',
+                  vedic_connection: '',
+                  modern_application: '',
+                  selectedFieldIds: [],
+                  selectedLevel: ''
+                });
                 setShowForm(true);
               }}
               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-medium hover:from-orange-600 hover:to-red-600 transition-all"
@@ -622,6 +702,26 @@ export default function QuestionBankManager() {
               categories={questionCategories}
               onEdit={(q) => {
                 setEditingQuestion(q);
+                // Initialize form with existing question
+                const mappedFields = questionFieldMappings[q.question_id] || [];
+                setQForm({
+                  question_text: q.question_text || '',
+                  options: Array.isArray(q.options) ? q.options : ['', '', '', ''],
+                  correct_answer: q.correct_answer || '',
+                  category: q.category || '',
+                  difficulty: q.difficulty || DIFFICULTY_LEVELS.EASY,
+                  explanation: q.explanation || '',
+                  vedic_connection: q.vedic_connection || '',
+                  modern_application: q.modern_application || '',
+                  selectedFieldIds: mappedFields,
+                  selectedLevel: (() => {
+                    const tags = Array.isArray(q.tags) ? q.tags : [];
+                    const levelTag = tags.find(t => /^level_/.test(t));
+                    if (levelTag) return levelTag.replace('level_','');
+                    const gradeTag = tags.find(t => /^grade_\d+$/.test(t));
+                    return gradeTag ? gradeTag.replace('grade_','') : '';
+                  })()
+                });
                 setShowForm(true);
               }}
               onDelete={(q) => setDeleteConfirm(q)}
@@ -664,10 +764,10 @@ export default function QuestionBankManager() {
             setShowForm(false);
             setEditingQuestion(null);
           }}
-        >
+          >
           <div 
-            className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border border-white/20 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+          className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl border border-white/20 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl ring-1 ring-white/10"
+          onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
@@ -685,9 +785,222 @@ export default function QuestionBankManager() {
                 </button>
               </div>
               
-              {/* Question Form would go here in a real implementation */}
-              <div className="text-white">
-                Question form implementation would go here
+              {/* Question Form */}
+              <div className="text-white space-y-6">
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Targeting Section */}
+                  <div className="space-y-4">
+                    <h4 className="text-white/90 font-semibold">Targeting</h4>
+                    {/* Study Fields */}
+                    <div>
+                      <label className="block text-sm text-white/80 mb-2">Assign to Study Fields</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {studyFields.map(field => {
+                          const checked = qForm.selectedFieldIds.includes(field.field_id);
+                          return (
+                            <label key={field.field_id} className="flex items-center gap-2 p-2 rounded-lg border border-white/20 bg-white/5 hover:bg-white/10 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  setQForm(f => ({
+                                    ...f,
+                                    selectedFieldIds: e.target.checked
+                                      ? [...f.selectedFieldIds, field.field_id]
+                                      : f.selectedFieldIds.filter(id => id !== field.field_id)
+                                  }));
+                                }}
+                              />
+                              <span className="text-lg">{field.icon}</span>
+                              <span className="text-white">{field.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Category and Education Level */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm text-white/80 mb-1">Category</label>
+                        <div className="relative">
+                          <select
+                            value={qForm.category}
+                            onChange={(e) => setQForm(f => ({ ...f, category: e.target.value }))}
+                            className="w-full appearance-none pr-10 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+                          >
+                            <option value="">Select category</option>
+                            {questionCategories.map(cat => (
+                              <option key={cat.category_id} value={cat.name}>{cat.name}</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-white/60 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm text-white/80 mb-1">Education Level</label>
+                        <div className="relative">
+                          <select
+                            value={qForm.selectedLevel}
+                            onChange={(e) => setQForm(f => ({ ...f, selectedLevel: e.target.value }))}
+                            className="w-full appearance-none pr-10 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+                          >
+                            <option value="">Select level</option>
+                            <option value="9">9th Grade</option>
+                            <option value="10">10th Grade</option>
+                            <option value="11">11th Grade</option>
+                            <option value="12">12th Grade</option>
+                            <option value="undergraduate">Undergraduate</option>
+                            <option value="graduate">Graduate</option>
+                            <option value="postgraduate">Postgraduate</option>
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-white/60 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Question Text */}
+                  <div>
+                    <label className="block text-sm text-white/80 mb-1">Question Text</label>
+                    <textarea
+                      value={qForm.question_text}
+                      onChange={(e) => setQForm(f => ({ ...f, question_text: e.target.value }))}
+                      rows={3}
+                      className="w-full p-3 rounded-lg bg-white/5 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+                      placeholder="Enter the question..."
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-sm text-white/80 mb-1">Difficulty</label>
+                      <div className="relative">
+                        <select
+                          value={qForm.difficulty}
+                          onChange={(e) => setQForm(f => ({ ...f, difficulty: e.target.value }))}
+                          className="w-full appearance-none pr-10 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+                        >
+                          {Object.values(DIFFICULTY_LEVELS).map(d => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                        <ChevronDown className="w-4 h-4 text-white/60 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Options */}
+                  <div className="space-y-2">
+                    <label className="block text-sm text-white/80">Options (4)</label>
+                    {qForm.options.map((opt, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={opt}
+                          onChange={(e) => {
+                            const opts = [...qForm.options];
+                            opts[idx] = e.target.value;
+                            setQForm(f => ({ ...f, options: opts }));
+                          }}
+                          className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+                          placeholder={`Option ${idx + 1}`}
+                        />
+                        <label className="flex items-center gap-1 text-xs text-white/70">
+                          <input
+                            type="radio"
+                            name="correct"
+                            checked={qForm.correct_answer === opt && !!opt}
+                            onChange={() => setQForm(f => ({ ...f, correct_answer: opt }))}
+                          />
+                          Correct
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-white/80 mb-1">Explanation</label>
+                      <textarea
+                        value={qForm.explanation}
+                        onChange={(e) => setQForm(f => ({ ...f, explanation: e.target.value }))}
+                        rows={2}
+                        className="w-full p-3 rounded-lg bg-white/5 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400"
+                        placeholder="Provide explanation for the correct answer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-white/80 mb-1">Vedic Connection (optional)</label>
+                      <textarea
+                        value={qForm.vedic_connection}
+                        onChange={(e) => setQForm(f => ({ ...f, vedic_connection: e.target.value }))}
+                        rows={2}
+                        className="w-full p-3 rounded-lg bg-white/5 border border-white/20 text-white placeholder-white/50"
+                        placeholder="Any traditional connection?"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-white/80 mb-1">Modern Application (optional)</label>
+                    <textarea
+                      value={qForm.modern_application}
+                      onChange={(e) => setQForm(f => ({ ...f, modern_application: e.target.value }))}
+                      rows={2}
+                      className="w-full p-3 rounded-lg bg-white/5 border border-white/20 text-white placeholder-white/50"
+                      placeholder="Any modern application?"
+                    />
+                  </div>
+
+                  
+                                  </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      setShowForm(false);
+                      setEditingQuestion(null);
+                    }}
+                    className="flex-1 px-4 py-2 rounded-lg border border-white/20 bg-white/10 text-white hover:bg-white/20 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Validate
+                      const errors = [];
+                      if (!qForm.category) errors.push('Category');
+                      if (!qForm.question_text.trim()) errors.push('Question Text');
+                      const filledOptions = qForm.options.filter(o => o && o.trim());
+                      if (filledOptions.length !== 4) errors.push('All 4 Options');
+                      if (!filledOptions.includes(qForm.correct_answer)) errors.push('Valid Correct Answer');
+                      if (qForm.selectedFieldIds.length === 0) errors.push('At least one Study Field');
+                      if (!qForm.selectedLevel) errors.push('Education Level');
+                      if (errors.length) {
+                        toast.error(`Please provide: ${errors.join(', ')}`);
+                        return;
+                      }
+
+                      handleAddQuestion({
+                        question_id: editingQuestion?.question_id,
+                        question_text: qForm.question_text,
+                        options: qForm.options,
+                        correct_answer: qForm.correct_answer,
+                        category: qForm.category,
+                        difficulty: qForm.difficulty,
+                        explanation: qForm.explanation,
+                        vedic_connection: qForm.vedic_connection,
+                        modern_application: qForm.modern_application,
+                        selectedFieldIds: qForm.selectedFieldIds,
+                        selectedLevel: qForm.selectedLevel
+                      });
+                    }}
+                    className="flex-1 px-4 py-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 transition-all"
+                  >
+                    {editingQuestion ? 'Save Changes' : 'Create Question'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

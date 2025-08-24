@@ -448,3 +448,31 @@ label.cursor-pointer:hover {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Global fix: ensure native select dropdowns are always readable */
+/* Many browsers render option lists using system UI colors and may inherit text color from the select. */
+/* Force a high-contrast light dropdown list with dark text to avoid white-on-white scenarios. */
+select option {
+  background-color: #ffffff !important;
+  color: #111111 !important;
+}
+select optgroup {
+  background-color: #ffffff !important;
+  color: #111111 !important;
+}
+/* Hover/active state for options for better visibility */
+select option:hover,
+select option:focus,
+select option:checked {
+  background-color: #f2f2f2 !important;
+  color: #111111 !important;
+}
+
+/* Edge cases: some engines (older Safari/Firefox) need explicit -moz/-webkit appearance overrides on select for consistency */
+select::-ms-value { /* IE/Edge legacy */
+  color: inherit;
+  background: transparent;
+}
+
+/* Maintain our custom dark-themed control appearance while ensuring the dropdown list stays readable */
+/* Do not override the select control background here, only the dropdown options. */

@@ -1,64 +1,67 @@
--- AI Settings Table Setup Script
--- This script creates the ai_settings table for managing global AI enablement
+-- =============================================================
+-- AI Settings Table, RLS Policies, and Seed Row (No DO blocks)
+-- Run this in your Supabase SQL editor (or psql) once.
+-- Safe to re-run due to IF EXISTS / IF NOT EXISTS usage
+-- =============================================================
 
--- Create the ai_settings table
-CREATE TABLE IF NOT EXISTS ai_settings (
-  id SERIAL PRIMARY KEY,
-  setting_key VARCHAR(100) UNIQUE NOT NULL,
-  ai_enabled BOOLEAN DEFAULT true,
-  description TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+-- 1) Create table (id as UUID with default), if not exists
+CREATE TABLE IF NOT EXISTS public.ai_settings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  setting_key text UNIQUE NOT NULL,
+  ai_enabled boolean NOT NULL DEFAULT true,
+  description text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Create updated_at trigger function
-CREATE OR REPLACE FUNCTION update_ai_settings_updated_at()
-RETURNS TRIGGER AS $$
+-- 2) Create/replace trigger function to auto-update updated_at
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS trigger AS $$
 BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
+  NEW.updated_at = now();
+  RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
 
--- Create trigger to automatically update updated_at
-CREATE TRIGGER update_ai_settings_updated_at
-    BEFORE UPDATE ON ai_settings
-    FOR EACH ROW
-    EXECUTE FUNCTION update_ai_settings_updated_at();
+-- 3) Recreate trigger for updated_at on ai_settings (idempotent)
+DROP TRIGGER IF EXISTS trg_ai_settings_updated_at ON public.ai_settings;
+CREATE TRIGGER trg_ai_settings_updated_at
+BEFORE UPDATE ON public.ai_settings
+FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
--- Insert default AI setting for question generation
-INSERT INTO ai_settings (setting_key, ai_enabled, description)
-VALUES ('global_question_generation', true, 'Global toggle for AI question generation in assignments')
-ON CONFLICT (setting_key) DO NOTHING;
+-- 4) Enable Row Level Security
+ALTER TABLE public.ai_settings ENABLE ROW LEVEL SECURITY;
 
--- Enable Row Level Security (RLS)
-ALTER TABLE ai_settings ENABLE ROW LEVEL SECURITY;
+-- 5) RLS Policies (idempotent via DROP IF EXISTS)
+DROP POLICY IF EXISTS "ai_settings_select" ON public.ai_settings;
+CREATE POLICY "ai_settings_select" ON public.ai_settings
+  FOR SELECT TO public
+  USING (true);
 
--- Create policies for ai_settings table
--- Allow authenticated users to read settings
-CREATE POLICY "Allow authenticated users to read AI settings" ON ai_settings
-  FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "ai_settings_insert" ON public.ai_settings;
+CREATE POLICY "ai_settings_insert" ON public.ai_settings
+  FOR INSERT TO authenticated
+  WITH CHECK (true);
 
--- Allow service role to update settings
-CREATE POLICY "Allow service role to update AI settings" ON ai_settings
-  FOR ALL TO service_role USING (true);
+DROP POLICY IF EXISTS "ai_settings_update" ON public.ai_settings;
+CREATE POLICY "ai_settings_update" ON public.ai_settings
+  FOR UPDATE TO authenticated
+  USING (true)
+  WITH CHECK (true);
 
--- Grant permissions
-GRANT SELECT ON ai_settings TO anon;
-GRANT SELECT ON ai_settings TO authenticated;
-GRANT ALL ON ai_settings TO service_role;
-GRANT USAGE, SELECT ON SEQUENCE ai_settings_id_seq TO service_role;
+-- 6) Seed/Upsert the global setting row
+INSERT INTO public.ai_settings (setting_key, ai_enabled, description)
+VALUES (
+  'global_question_generation',
+  true,
+  'Global toggle for AI question generation in assignments'
+)
+ON CONFLICT (setting_key) DO UPDATE
+SET ai_enabled = EXCLUDED.ai_enabled,
+    description = EXCLUDED.description,
+    updated_at = now();
 
--- Comments for documentation
-COMMENT ON TABLE ai_settings IS 'Stores AI-related settings for the application';
-COMMENT ON COLUMN ai_settings.setting_key IS 'Unique identifier for the setting';
-COMMENT ON COLUMN ai_settings.ai_enabled IS 'Whether the AI feature is enabled';
-COMMENT ON COLUMN ai_settings.description IS 'Description of what this setting controls';
-
--- Display final results
-SELECT 
-  'AI Settings Table Setup Complete!' as status,
-  setting_key,
-  ai_enabled,
-  description
-FROM ai_settings;
+-- 7) Verify
+SELECT setting_key, ai_enabled, created_at, updated_at
+FROM public.ai_settings
+WHERE setting_key = 'global_question_generation';

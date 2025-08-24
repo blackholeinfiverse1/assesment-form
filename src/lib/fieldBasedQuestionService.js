@@ -21,9 +21,15 @@ class FieldBasedQuestionService {
    */
   async generateQuestionsForStudent(studentData, totalQuestions = ASSIGNMENT_CONFIG.TOTAL_QUESTIONS) {
     try {
-      // Detect student's study field
+      // Detect student's study field and grade/category preferences
       const studyField = detectStudyFieldFromBackground(studentData);
-      console.log(`🎯 Detected study field: ${studyField} for student`, studentData);
+      // Build education level tags for filtering (e.g., level_9..12, level_undergraduate, level_graduate, level_postgraduate)
+      const levelTags = this.getStudentLevelTags(studentData);
+
+      // A category preference could be in responses.question_category or derived elsewhere
+      const preferredCategory = studentData?.responses?.question_category || null;
+
+      console.log(`🎯 Detected study field: ${studyField}, levels: ${levelTags.join(',') || 'N/A'}, preferredCategory: ${preferredCategory || 'auto'}`);
 
       // Get weights and difficulty distribution for the field
       const questionWeights = getQuestionWeightsForField(studyField);
@@ -32,9 +38,9 @@ class FieldBasedQuestionService {
       console.log(`📊 Question weights for ${studyField}:`, questionWeights);
       console.log(`📈 Difficulty distribution:`, difficultyDistribution);
 
-      // Primary category = highest weighted category for the field
-      const [primaryCategory] = Object.entries(questionWeights)
-        .sort((a, b) => b[1] - a[1])[0];
+      // Primary category = highest weighted category for the field, unless student picked a specific category
+      const [autoPrimaryCategory] = Object.entries(questionWeights).sort((a, b) => b[1] - a[1])[0];
+      const primaryCategory = preferredCategory || autoPrimaryCategory;
 
       // Decide high-priority admin question count: 5 for <=10 total, else up to 10
       const highPriorityCount = totalQuestions <= 10
@@ -83,11 +89,11 @@ class FieldBasedQuestionService {
 
       for (const [difficulty, count] of Object.entries(adminCounts)) {
         if (count <= 0) continue;
-        // Prefer field-mapped questions
-        let dbQs = await this.getFieldMappedQuestionsFromDatabase(studyField, primaryCategory, difficulty, count);
-        // If not enough, fallback to category-only admin questions
+        // Prefer field-mapped questions with grade filter
+        let dbQs = await this.getFieldMappedQuestionsFromDatabase(studyField, primaryCategory, difficulty, count, levelTags);
+        // If not enough, fallback to category-only admin questions filtered by education level
         if (dbQs.length < count) {
-          const topUp = await this.getQuestionsFromDatabase(primaryCategory, difficulty, count - dbQs.length);
+          const topUp = await this.getQuestionsFromDatabase(primaryCategory, difficulty, count - dbQs.length, levelTags);
           dbQs = dbQs.concat(topUp);
         }
         // Map to expected structure with metadata
@@ -157,7 +163,7 @@ class FieldBasedQuestionService {
         for (const [difficulty, count] of Object.entries(remainingAdminCounts)) {
           if (count <= 0) continue;
           try {
-            const adminQs = await this.getQuestionsForCategoryAndDifficulty(primaryCategory, difficulty, count);
+            const adminQs = await this.getQuestionsFromDatabase(primaryCategory, difficulty, count, levelTags);
             // Filter out duplicates
             const uniqueAdminQs = adminQs.filter(q => {
               const normalizedText = normalizeText(q.question_text);
@@ -186,18 +192,16 @@ class FieldBasedQuestionService {
       // Combine: admin high-priority first, then AI-generated or additional admin
       let combined = [...adminQuestions, ...aiQuestions];
 
-      // Top-up if still short using curated bank from the same primary category
+      // Top-up strictly from DB with same constraints (category + optional grade)
       if (combined.length < totalQuestions) {
-        const _needed = totalQuestions - combined.length;
         const usedTexts = new Set(combined.map(q => (q.question_text || '').toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim()));
-        // Fill order preference: medium -> easy -> hard
         const fillOrder = [DIFFICULTY_LEVELS.MEDIUM, DIFFICULTY_LEVELS.EASY, DIFFICULTY_LEVELS.HARD];
         for (const diff of fillOrder) {
           if (combined.length >= totalQuestions) break;
           const remaining = totalQuestions - combined.length;
-          const bank = getQuestionsByCategoryAndDifficulty(primaryCategory, diff);
-          const candidates = bank.filter(q => !usedTexts.has((q.question_text || '').toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim()));
-          const picked = this.selectRandomQuestions(candidates.length ? candidates : bank, remaining).map(q => ({
+          const pool = await this.getQuestionsFromDatabase(primaryCategory, diff, remaining * 2, levelTags);
+          const unique = pool.filter(q => !usedTexts.has((q.question_text || '').toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim()));
+          const picked = this.selectRandomQuestions(unique.length ? unique : pool, remaining).map(q => ({
             ...q,
             category: primaryCategory,
             difficulty: diff,
@@ -383,17 +387,26 @@ class FieldBasedQuestionService {
   /**
    * Get questions from database (for admin-managed questions)
    */
-  async getQuestionsFromDatabase(category, difficulty, count) {
+  async getQuestionsFromDatabase(category, difficulty, count, levelTags = []) {
     try {
-      console.log(`🔍 Fetching general questions: category=${category}, difficulty=${difficulty}, count=${count}`);
+      console.log(`🔍 Fetching general questions: category=${category}, difficulty=${difficulty}, count=${count}, levelTags=${(levelTags||[]).join(',') || 'any'}`);
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('question_banks')
         .select('*')
         .eq('category', category)
         .eq('difficulty', difficulty)
-        .eq('is_active', true)
-        .limit(count * 2); // Get more than needed for randomization
+        .eq('is_active', true);
+
+      // Apply education level filtering if provided
+      if (Array.isArray(levelTags) && levelTags.length > 0) {
+        // Prefer overlaps so any tag match qualifies
+        query = query.overlaps('tags', levelTags);
+      }
+
+      query = query.limit(count * 3);
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching questions from database:', error);
@@ -401,7 +414,25 @@ class FieldBasedQuestionService {
       }
 
       console.log(`✅ Successfully fetched ${data?.length || 0} general questions from database`);
-      return this.selectRandomQuestions(data || [], count);
+
+      // If not enough and level filter was applied, try without level as fallback
+      let pool = data || [];
+      if (pool.length < count && Array.isArray(levelTags) && levelTags.length > 0) {
+        const { data: noLevelData, error: noLevelErr } = await supabase
+          .from('question_banks')
+          .select('*')
+          .eq('category', category)
+          .eq('difficulty', difficulty)
+          .eq('is_active', true)
+          .limit(count * 2);
+        if (!noLevelErr && noLevelData) {
+          // Merge unique by question_id
+          const ids = new Set(pool.map(q => q.question_id));
+          noLevelData.forEach(q => { if (!ids.has(q.question_id)) pool.push(q); });
+        }
+      }
+
+      return this.selectRandomQuestions(pool, count);
     } catch (error) {
       console.error('Database query error:', error);
       return [];
@@ -411,9 +442,9 @@ class FieldBasedQuestionService {
   /**
    * Get questions mapped to a study field via question_field_mapping
    */
-  async getFieldMappedQuestionsFromDatabase(fieldId, category, difficulty, count) {
+  async getFieldMappedQuestionsFromDatabase(fieldId, category, difficulty, count, levelTags = []) {
     try {
-      console.log(`🔍 Fetching field-mapped questions for field: ${fieldId}, category: ${category}, difficulty: ${difficulty}, count: ${count}`);
+      console.log(`🔍 Fetching field-mapped questions for field: ${fieldId}, category: ${category}, difficulty: ${difficulty}, count=${count}, levelTags=${(levelTags||[]).join(',') || 'any'}`);
       
       // 1) Find question_ids mapped to the field
       const { data: mappings, error: mapErr } = await supabase
@@ -426,33 +457,52 @@ class FieldBasedQuestionService {
         return [];
       }
 
-      console.log(`📋 Found ${mappings?.length || 0} question mappings for field ${fieldId}`);
-      
       const ids = (mappings || []).map(m => m.question_id);
       if (!ids.length) {
         console.log(`❌ No questions mapped to field ${fieldId}`);
         return [];
       }
 
-      console.log(`🎯 Looking for questions with IDs:`, ids.slice(0, 5), ids.length > 5 ? `...and ${ids.length - 5} more` : '');
-
       // 2) Pull questions by ids with filters
-      const { data, error } = await supabase
+      let query = supabase
         .from('question_banks')
         .select('*')
         .in('question_id', ids)
         .eq('category', category)
         .eq('difficulty', difficulty)
-        .eq('is_active', true)
-        .limit(count * 2);
+        .eq('is_active', true);
+
+      if (Array.isArray(levelTags) && levelTags.length > 0) {
+        query = query.overlaps('tags', levelTags);
+      }
+
+      query = query.limit(count * 3);
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching mapped questions:', error);
         return [];
       }
 
-      console.log(`✅ Successfully fetched ${data?.length || 0} field-mapped questions for ${fieldId}`);
-      return this.selectRandomQuestions(data || [], count);
+      let pool = data || [];
+      // If not enough and level filter applied, try without level
+      if (pool.length < count && Array.isArray(levelTags) && levelTags.length > 0) {
+        const { data: noLevelData, error: noLevelErr } = await supabase
+          .from('question_banks')
+          .select('*')
+          .in('question_id', ids)
+          .eq('category', category)
+          .eq('difficulty', difficulty)
+          .eq('is_active', true)
+          .limit(count * 2);
+        if (!noLevelErr && noLevelData) {
+          const idset = new Set(pool.map(q => q.question_id));
+          noLevelData.forEach(q => { if (!idset.has(q.question_id)) pool.push(q); });
+        }
+      }
+
+      console.log(`✅ Successfully fetched ${pool.length} field-mapped questions for ${fieldId}`);
+      return this.selectRandomQuestions(pool, count);
     } catch (error) {
       console.error('Database query error (mapped):', error);
       return [];
@@ -633,6 +683,45 @@ class FieldBasedQuestionService {
     }
 
     return true;
+  }
+
+  /**
+   * Derive education level tag(s) from student data
+   * Returns array of tags to match, e.g., ['level_9','grade_9'] or ['level_undergraduate']
+   */
+  getStudentLevelTags(studentData) {
+    const tags = [];
+
+    // Try to find an explicit numeric grade (9-12)
+    const gradeRaw = studentData?.grade || studentData?.responses?.grade || '';
+    const numeric = String(gradeRaw).match(/\b(9|10|11|12)\b/);
+    if (numeric) {
+      const g = numeric[1];
+      tags.push(`level_${g}`, `grade_${g}`); // include legacy grade_ tag for compatibility
+      return tags;
+    }
+
+    // Try to use class_level/education level
+    const lvl = studentData?.responses?.class_level || studentData?.class_level || studentData?.background_class_level || '';
+    switch ((lvl || '').toLowerCase()) {
+      case 'high_school':
+        // Unknown specific grade: accept any HS level
+        tags.push('level_9', 'level_10', 'level_11', 'level_12', 'grade_9', 'grade_10', 'grade_11', 'grade_12');
+        break;
+      case 'undergraduate':
+        tags.push('level_undergraduate');
+        break;
+      case 'graduate':
+        tags.push('level_graduate');
+        break;
+      case 'postgraduate':
+        tags.push('level_postgraduate');
+        break;
+      default:
+        // No level filter
+        break;
+    }
+    return tags;
   }
 }
 

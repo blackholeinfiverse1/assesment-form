@@ -81,7 +81,7 @@ class AISettingsService {
           setting_key: 'global_question_generation',
           ai_enabled: enabled,
           updated_at: new Date().toISOString()
-        });
+        }, { onConflict: 'setting_key' });
 
       if (error) {
         console.error('Failed to update AI settings in database:', error);
