@@ -113,10 +113,10 @@ class FieldBasedQuestionService {
       for (const [difficulty, count] of Object.entries(adminCounts)) {
         if (count <= 0) continue;
         // Prefer field-mapped questions with grade filter
-        let dbQs = await this.getFieldMappedQuestionsFromDatabase(mappingFieldId, primaryCategory, difficulty, count, levelTags);
+        let dbQs = await this.getFieldMappedQuestionsFromDatabase(mappingFieldId, primaryCategory, difficulty, count, levelTags, true);
         // If not enough, fallback to category-only admin questions filtered by education level
         if (dbQs.length < count) {
-          const topUp = await this.getQuestionsFromDatabase(primaryCategory, difficulty, count - dbQs.length, levelTags);
+          const topUp = await this.getQuestionsFromDatabase(primaryCategory, difficulty, count - dbQs.length, levelTags, true);
           dbQs = dbQs.concat(topUp);
         }
         // Map to expected structure with metadata
@@ -189,7 +189,7 @@ class FieldBasedQuestionService {
         for (const [difficulty, count] of Object.entries(remainingAdminCounts)) {
           if (count <= 0) continue;
           try {
-            const adminQs = await this.getQuestionsFromDatabase(primaryCategory, difficulty, count, levelTags);
+            const adminQs = await this.getQuestionsFromDatabase(primaryCategory, difficulty, count, levelTags, true);
             // Filter out duplicates
             const uniqueAdminQs = adminQs.filter(q => {
               const normalizedText = normalizeText(q.question_text);
@@ -225,7 +225,7 @@ class FieldBasedQuestionService {
         for (const diff of fillOrder) {
           if (combined.length >= totalQuestions) break;
           const remaining = totalQuestions - combined.length;
-          const pool = await this.getQuestionsFromDatabase(primaryCategory, diff, remaining * 2, levelTags);
+          const pool = await this.getQuestionsFromDatabase(primaryCategory, diff, remaining * 2, levelTags, true);
           const unique = pool.filter(q => !usedTexts.has((q.question_text || '').toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim()));
           const picked = this.selectRandomQuestions(unique.length ? unique : pool, remaining).map(q => ({
             ...q,
@@ -240,8 +240,8 @@ class FieldBasedQuestionService {
         }
       }
 
-      // If strict category chosen and still short, force AI generation even if globally disabled
-      if (strictCategory && combined.length < totalQuestions) {
+      // If strict category chosen and still short, and AI is enabled, top-up with AI
+      if (strictCategory && isAIEnabled && combined.length < totalQuestions) {
         const remaining = totalQuestions - combined.length;
         const usedTexts = new Set(combined.map(q => (q.question_text || '').toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim()));
         const aiCounts = splitByDifficulty(remaining);
@@ -260,8 +260,8 @@ class FieldBasedQuestionService {
         }
       }
 
-      // Curated bank fallback if DB/AI were insufficient (works even when AI is disabled)
-      if (!strictCategory && combined.length < totalQuestions) {
+      // Curated bank fallback only when AI is enabled and category is not strict
+      if (!strictCategory && isAIEnabled && combined.length < totalQuestions) {
         const remaining = totalQuestions - combined.length;
         const curatedCounts = splitByDifficulty(remaining);
         for (const [diff, count] of Object.entries(curatedCounts)) {
@@ -276,8 +276,8 @@ class FieldBasedQuestionService {
         }
       }
 
-      // If still not enough, broaden to other categories based on field weights
-      if (!strictCategory && combined.length < totalQuestions) {
+      // If still not enough and AI is enabled, broaden to other categories based on field weights
+      if (!strictCategory && isAIEnabled && combined.length < totalQuestions) {
         const remainingNeeded = totalQuestions - combined.length;
         const categoriesByWeight = Object.entries(questionWeights)
           .sort((a, b) => b[1] - a[1])
@@ -481,7 +481,7 @@ class FieldBasedQuestionService {
   /**
    * Get questions from database (for admin-managed questions)
    */
-  async getQuestionsFromDatabase(category, difficulty, count, levelTags = []) {
+  async getQuestionsFromDatabase(category, difficulty, count, levelTags = [], excludeAI = false) {
     try {
       console.log(`🔍 Fetching general questions: category=${category}, difficulty=${difficulty}, count=${count}, levelTags=${(levelTags||[]).join(',') || 'any'}`);
       
@@ -490,6 +490,10 @@ class FieldBasedQuestionService {
         .select('*')
         .ilike('difficulty', difficulty)
         .eq('is_active', true);
+
+      if (excludeAI) {
+        query = query.eq('created_by', 'admin');
+      }
 
       // Apply category filter (category_id preferred, fallback to legacy name)
       try {
@@ -528,6 +532,9 @@ class FieldBasedQuestionService {
           .ilike('difficulty', difficulty)
           .eq('is_active', true)
           .limit(count * 2);
+        if (excludeAI) {
+          noLevelQuery = noLevelQuery.eq('created_by', 'admin');
+        }
         noLevelQuery = r.categoryId
           ? noLevelQuery.eq('category_id', r.categoryId)
           : noLevelQuery.eq('category', r.name || category);
@@ -546,10 +553,14 @@ class FieldBasedQuestionService {
           .select('*')
           .eq('is_active', true)
           .limit(count * 3);
+        if (excludeAI) {
+          catOnlyQuery = catOnlyQuery.eq('created_by', 'admin');
+        }
         catOnlyQuery = r2.categoryId
           ? catOnlyQuery.eq('category_id', r2.categoryId)
           : catOnlyQuery.eq('category', r2.name || category);
-        if (Array.isArray(levelTags) && levelTags.length > 0) {
+        // In admin-only mode (excludeAI), do not restrict by level tags on final category-only fallback
+        if (!excludeAI && Array.isArray(levelTags) && levelTags.length > 0) {
           catOnlyQuery = catOnlyQuery.overlaps('tags', levelTags);
         }
         const { data: catOnlyData, error: catOnlyErr } = await catOnlyQuery;
@@ -569,7 +580,7 @@ class FieldBasedQuestionService {
   /**
    * Get questions mapped to a study field via question_field_mapping
    */
-  async getFieldMappedQuestionsFromDatabase(fieldId, category, difficulty, count, levelTags = []) {
+  async getFieldMappedQuestionsFromDatabase(fieldId, category, difficulty, count, levelTags = [], excludeAI = false) {
     try {
       console.log(`🔍 Fetching field-mapped questions for field: ${fieldId}, category: ${category}, difficulty: ${difficulty}, count=${count}, levelTags=${(levelTags||[]).join(',') || 'any'}`);
       
@@ -597,6 +608,10 @@ class FieldBasedQuestionService {
         .in('question_id', ids)
         .ilike('difficulty', difficulty)
         .eq('is_active', true);
+
+      if (excludeAI) {
+        query = query.eq('created_by', 'admin');
+      }
 
       // Apply category filter (category_id preferred, fallback to legacy name)
       try {
@@ -631,6 +646,9 @@ class FieldBasedQuestionService {
           .ilike('difficulty', difficulty)
           .eq('is_active', true)
           .limit(count * 2);
+        if (excludeAI) {
+          noLevelQuery = noLevelQuery.eq('created_by', 'admin');
+        }
         noLevelQuery = r.categoryId
           ? noLevelQuery.eq('category_id', r.categoryId)
           : noLevelQuery.eq('category', r.name || category);
@@ -649,10 +667,14 @@ class FieldBasedQuestionService {
           .in('question_id', ids)
           .eq('is_active', true)
           .limit(count * 3);
+        if (excludeAI) {
+          catOnlyQuery = catOnlyQuery.eq('created_by', 'admin');
+        }
         catOnlyQuery = r2.categoryId
           ? catOnlyQuery.eq('category_id', r2.categoryId)
           : catOnlyQuery.eq('category', r2.name || category);
-        if (Array.isArray(levelTags) && levelTags.length > 0) {
+        // In admin-only mode (excludeAI), do not restrict by level tags on final category-only fallback
+        if (!excludeAI && Array.isArray(levelTags) && levelTags.length > 0) {
           catOnlyQuery = catOnlyQuery.overlaps('tags', levelTags);
         }
         const { data: catOnlyData, error: catOnlyErr } = await catOnlyQuery;
