@@ -26,9 +26,15 @@ class ScoringService {
     let totalScore = 0;
     const categoryScores = {};
 
-    // Initialize category scores
+    // Initialize category scores for both predefined and dynamic categories
+    const questionCategories = Array.from(new Set((questions || []).map(q => q?.category).filter(Boolean)));
     Object.values(ASSIGNMENT_CATEGORIES).forEach(category => {
       categoryScores[category] = { total: 0, max: 0, count: 0 };
+    });
+    questionCategories.forEach(category => {
+      if (!categoryScores[category]) {
+        categoryScores[category] = { total: 0, max: 0, count: 0 };
+      }
     });
 
     console.log(`📊 Initialized category scores:`, categoryScores);
@@ -51,8 +57,11 @@ class ScoringService {
 
         evaluatedResponses.push(evaluation);
 
-        // Update category scores
-        const category = question.category;
+        // Update category scores (support dynamic categories)
+        const category = question.category || 'General';
+        if (!categoryScores[category]) {
+          categoryScores[category] = { total: 0, max: 0, count: 0 };
+        }
         categoryScores[category].total += evaluation.total_score;
         categoryScores[category].max += SCORING_CRITERIA.MAX_SCORE_PER_QUESTION;
         categoryScores[category].count += 1;
@@ -67,7 +76,38 @@ class ScoringService {
 
       } catch (error) {
         console.error(`❌ Failed to evaluate question ${i + 1}:`, error);
-        throw new Error(`Failed to evaluate question ${i + 1}: ${error.message}`);
+        // Fallback: continue evaluation with a minimal record for this question
+        const isCorrect = userAnswer === question.correct_answer;
+        const fallbackEvaluation = {
+          question_id: question.id,
+          question_category: question.category || 'General',
+          question_difficulty: question.difficulty || 'Medium',
+          user_answer: userAnswer,
+          user_explanation: userExplanation,
+          correct_answer: question.correct_answer ?? null,
+          is_correct: Boolean(isCorrect),
+          accuracy_score: isCorrect ? 10 : 0,
+          explanation_score: 0,
+          reasoning_score: 0,
+          total_score: Math.round((isCorrect ? 10 : 0) * SCORING_CRITERIA.ACCURACY_WEIGHT * 100) / 100,
+          max_score: SCORING_CRITERIA.MAX_SCORE_PER_QUESTION,
+          ai_feedback: 'Automatic fallback: evaluation for this question encountered an error and was skipped.',
+          suggestions: 'Review this topic and try to provide a clear explanation next time.',
+          evaluated_at: new Date().toISOString()
+        };
+
+        evaluatedResponses.push(fallbackEvaluation);
+
+        const category = question.category || 'General';
+        if (!categoryScores[category]) {
+          categoryScores[category] = { total: 0, max: 0, count: 0 };
+        }
+        categoryScores[category].total += fallbackEvaluation.total_score;
+        categoryScores[category].max += SCORING_CRITERIA.MAX_SCORE_PER_QUESTION;
+        categoryScores[category].count += 1;
+
+        totalScore += fallbackEvaluation.total_score;
+        // Do not throw; continue with remaining questions
       }
     }
 
@@ -98,7 +138,7 @@ class ScoringService {
       overall_feedback: overallFeedback,
       grade: this.calculateGrade(overallPercentage),
       strengths: this.identifyStrengths(categoryScores),
-      improvement_areas: this.identifyImprovementAreas(categoryScores),
+      improvement_areas: this.identifyImprovementAreas(categoryScores, attempt?.student_field),
       evaluated_at: new Date().toISOString()
     };
   }
@@ -411,15 +451,108 @@ class ScoringService {
       .sort((a, b) => b.percentage - a.percentage);
   }
 
-  identifyImprovementAreas(categoryScores) {
+  identifyImprovementAreas(categoryScores, fieldOfStudy = 'General') {
+    // Local helpers to avoid class-wide changes
+    const normalizeField = (field) => (field || 'General').toString().trim().toLowerCase();
+    const normalizeCategory = (cat) => (cat || 'General').toString().trim().toLowerCase();
+
+    const field = normalizeField(fieldOfStudy);
+
+    const getSuggestion = (field, category) => {
+      const c = normalizeCategory(category);
+      const f = field;
+
+      const is = (s) => c.includes(s);
+
+      // Determine a canonical category bucket
+      let bucket = 'general';
+      if (is('cod') || is('program') || is('software')) bucket = 'coding';
+      else if (is('logic') || is('reason')) bucket = 'logic';
+      else if (is('math')) bucket = 'mathematics';
+      else if (is('lang')) bucket = 'language';
+      else if (is('vedic')) bucket = 'vedic';
+      else if (is('culture')) bucket = 'culture';
+      else if (is('current') || is('affairs') || is('news')) bucket = 'current_affairs';
+      else if (is('data') || is('ai') || is('ml') || is('machine learning')) bucket = 'data_ai';
+
+      // Field-aware guidance matrix
+      const byField = {
+        'computer science': {
+          coding: 'Practice algorithmic problem-solving (arrays, strings, graphs) and implement solutions in your preferred language. Review time/space complexity and solve 30–50 curated problems.',
+          logic: 'Work through logical reasoning and discrete math problems (sets, combinatorics). Prove small properties to build formal reasoning habits.',
+          mathematics: 'Strengthen discrete math (graphs, number theory) and probability basics used in CS interviews and systems.',
+          language: 'Explain code decisions clearly; write short design notes for your solutions to sharpen communication.',
+          data_ai: 'Review fundamentals of probability, linear algebra (vectors, matrices), and learn to evaluate model metrics with simple datasets.'
+        },
+        'engineering': {
+          mathematics: 'Review calculus and linear algebra foundations; apply them to real system problems (signals, mechanics).',
+          logic: 'Practice step-by-step problem decomposition and unit-checking in calculations.',
+          coding: 'Automate calculations and plotting with Python/Matlab; write small scripts to check formulae.',
+          language: 'Document assumptions and constraints clearly in brief technical notes.'
+        },
+        'mathematics': {
+          mathematics: 'Revisit definitions and theorems; solve varied problems and write concise proofs to improve rigor.',
+          logic: 'Do structured logic drills; translate word problems into symbolic form and check each inference rule.'
+        },
+        'business': {
+          current_affairs: 'Follow reputable finance/industry sources and summarize implications for strategy once a week.',
+          logic: 'Practice case frameworks; justify choices with data and clear assumptions.',
+          language: 'Improve concise writing: executive summaries with bullets and quantified insights.'
+        },
+        'humanities': {
+          language: 'Strengthen thesis-argument-evidence structure; analyze sample essays for coherence and flow.',
+          culture: 'Study cross-cultural case studies and compare perspectives with evidence-backed arguments.'
+        },
+        'general': {
+          coding: 'Focus on core programming constructs (loops, conditionals, arrays). Build 2–3 small projects.',
+          logic: 'Solve daily reasoning puzzles; write out each inference step.',
+          mathematics: 'Practice foundational arithmetic/algebra and word problems with step-by-step solutions.',
+          language: 'Summarize texts and practice explaining answers in 3–5 clear sentences.',
+          culture: 'Read short articles and note 2–3 factual takeaways plus one reflection.',
+          current_affairs: 'Follow one trusted news source; write weekly summaries of impacts and stakeholders.',
+          vedic: 'Connect verses to modern contexts; write brief reflections on practical applications.',
+          data_ai: 'Learn basic data literacy: read charts, understand averages, and simple correlations.'
+        }
+      };
+
+      // Map field synonyms
+      const fieldAlias = {
+        'cs': 'computer science',
+        'software engineering': 'computer science',
+        'it': 'computer science',
+        'comp sci': 'computer science',
+        'statistics': 'mathematics',
+        'maths': 'mathematics',
+        'mechanical engineering': 'engineering',
+        'electrical engineering': 'engineering',
+        'civil engineering': 'engineering',
+        'economics': 'business',
+        'commerce': 'business',
+        'liberal arts': 'humanities'
+      };
+
+      const canonicalField = byField[f] ? f : (byField[fieldAlias[f]] ? fieldAlias[f] : 'general');
+      const fieldGuides = byField[canonicalField] || byField['general'];
+
+      // Default to general if the bucket isn't present for this field
+      const suggestion = fieldGuides[bucket] || byField['general'][bucket] || byField['general']['logic'];
+
+      // Compose short, actionable advice
+      return suggestion;
+    };
+
     return Object.entries(categoryScores)
+      .filter(([, data]) => (data && typeof data.percentage === 'number'))
       .filter(([, data]) => data.percentage < 70)
-      .map(([category, data]) => ({
-        category,
-        percentage: data.percentage,
-        description: `Needs improvement in ${category} (${data.percentage.toFixed(1)}%)`,
-        suggestion: this.getCategoryImprovementSuggestion(category)
-      }))
+      .map(([category, data]) => {
+        const suggestion = getSuggestion(field, category);
+        return {
+          category,
+          percentage: data.percentage,
+          description: `Focus on ${category} for your study field to strengthen fundamentals (${data.percentage.toFixed(1)}%).`,
+          suggestion
+        };
+      })
       .sort((a, b) => a.percentage - b.percentage);
   }
 

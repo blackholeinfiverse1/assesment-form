@@ -65,7 +65,7 @@ function QuestionCard({ question, questionNumber, userAnswer, onAnswerChange, on
         <h3 className="text-lg font-medium text-white">{question.question_text}</h3>
 
         <div className="space-y-2">
-          {question.options.map((option, index) => (
+          {(Array.isArray(question.options) ? question.options : []).map((option, index) => (
             <label
               key={index}
               className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
@@ -314,10 +314,18 @@ export default function Assignment({ onComplete, userId = null, userEmail = null
       );
       // Normalize questions to ensure required fields and validate non-empty list
       const questions = Array.isArray(rawQuestions)
-        ? rawQuestions.map((q, index) => ({
-            ...q,
-            id: q?.id ?? q?.question_id ?? q?.questionId ?? `q_${index + 1}`
-          }))
+        ? rawQuestions
+            .filter(q => q && (q.id || q.question_id || q.questionId || q.question_text || q.text))
+            .map((q, index) => ({
+              ...q,
+              id: q?.id ?? q?.question_id ?? q?.questionId ?? `q_${index + 1}`,
+              question_text: q?.question_text ?? q?.text ?? '',
+              category: q?.category ?? 'General',
+              difficulty: q?.difficulty ?? 'Medium',
+              options: Array.isArray(q?.options) ? q.options : [],
+              correct_answer: q?.correct_answer ?? q?.correctAnswer ?? q?.answer ?? (Array.isArray(q?.options) ? q.options[0] : ''),
+              explanation: typeof q?.explanation === 'string' ? q.explanation : ''
+            }))
         : [];
       if (!questions.length) {
         throw new Error('questions_generation_failed: no questions available');
@@ -390,6 +398,7 @@ export default function Assignment({ onComplete, userId = null, userEmail = null
     const attempt = {
       id: `attempt_${Date.now()}`,
       assignment_id: assignment.id,
+      student_field: assignment.student_field,
       started_at: startTime.toISOString(),
       completed_at: endTime.toISOString(),
       time_taken_seconds: timeTaken,
@@ -487,10 +496,10 @@ export default function Assignment({ onComplete, userId = null, userEmail = null
     );
   }
 
-  const currentQuestion = assignment.questions[currentQuestionIndex];
+  const currentQuestion = assignment.questions[currentQuestionIndex] ?? assignment.questions.find(Boolean);
   const answeredQuestions = new Set(
     assignment.questions
-      .map((q, index) => userAnswers[q.id] ? index : null)
+      .map((q, index) => (q && q.id && userAnswers[q.id] ? index : null))
       .filter(index => index !== null)
   );
 
@@ -520,8 +529,8 @@ export default function Assignment({ onComplete, userId = null, userEmail = null
       <QuestionCard
         question={currentQuestion}
         questionNumber={currentQuestionIndex + 1}
-        userAnswer={userAnswers[currentQuestion.id]}
-        userExplanation={userExplanations[currentQuestion.id]}
+        userAnswer={currentQuestion ? userAnswers[currentQuestion.id] : undefined}
+        userExplanation={currentQuestion ? userExplanations[currentQuestion.id] : undefined}
         onAnswerChange={handleAnswerChange}
         onExplanationChange={handleExplanationChange}
         categories={categories}
