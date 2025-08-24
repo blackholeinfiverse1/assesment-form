@@ -91,6 +91,42 @@ export const DEFAULT_FORM_CONFIG = {
       },
     },
     {
+      id: "grade",
+      type: FIELD_TYPES.SELECT,
+      label: "Grade",
+      required: true,
+      order: 5,
+      section: "academic_info",
+      options: [
+        { value: "grade_9", label: "Grade 9" },
+        { value: "grade_10", label: "Grade 10" },
+        { value: "grade_11", label: "Grade 11" },
+        { value: "grade_12", label: "Grade 12" },
+        { value: "undergraduate", label: "Undergraduate" },
+        { value: "graduate", label: "Graduate" },
+        { value: "postgraduate", label: "Postgraduate" },
+        { value: "other", label: "Other" }
+      ],
+    },
+    {
+      id: "field_of_study",
+      type: FIELD_TYPES.SELECT,
+      label: "What field are you studying or working in?",
+      placeholder: "Select your field of study",
+      required: true,
+      order: 6,
+      section: "academic_info",
+    },
+    {
+      id: "question_category",
+      type: FIELD_TYPES.SELECT,
+      label: "Which question category do you prefer?",
+      placeholder: "Select a category",
+      required: true,
+      order: 6.5,
+      section: "academic_info",
+    },
+    {
       id: "current_skills",
       type: FIELD_TYPES.TEXTAREA,
       label: "Current Skills (comma separated)",
@@ -208,14 +244,70 @@ export class FormConfigService {
         return await this.getDefaultFormConfigWithDynamicFields();
       }
 
+      // Ensure required core fields exist in all active configs
+      data.fields = Array.isArray(data.fields) ? data.fields : [];
+
+      const hasField = (id) => data.fields.some(f => f.id === id);
+
+      // Inject Grade (required) if missing
+      if (!hasField('grade')) {
+        data.fields.push({
+          id: 'grade',
+          type: FIELD_TYPES.SELECT,
+          label: 'Grade',
+          required: true,
+          order: 5,
+          section: 'academic_info',
+          options: [
+            { value: 'grade_9', label: 'Grade 9' },
+            { value: 'grade_10', label: 'Grade 10' },
+            { value: 'grade_11', label: 'Grade 11' },
+            { value: 'grade_12', label: 'Grade 12' },
+            { value: 'undergraduate', label: 'Undergraduate' },
+            { value: 'graduate', label: 'Graduate' },
+            { value: 'postgraduate', label: 'Postgraduate' },
+            { value: 'other', label: 'Other' }
+          ],
+        });
+      }
+
+      // Inject field_of_study (required, dynamic options) if missing
+      if (!hasField('field_of_study')) {
+        data.fields.push({
+          id: 'field_of_study',
+          type: FIELD_TYPES.SELECT,
+          label: 'What field are you studying or working in?',
+          placeholder: 'Select your field of study',
+          required: true,
+          order: 6,
+          section: 'academic_info',
+        });
+      }
+
+      // Inject question_category (required) if missing
+      if (!hasField('question_category')) {
+        data.fields.push({
+          id: 'question_category',
+          type: FIELD_TYPES.SELECT,
+          label: 'Which question category do you prefer?',
+          placeholder: 'Select a category',
+          required: true,
+          order: 6.5,
+          section: 'academic_info',
+        });
+      }
+
       // Update field_of_study options with dynamic fields if it exists
-      if (data.fields) {
+      {
         const fieldOfStudyField = data.fields.find(f => f.id === 'field_of_study');
-        if (fieldOfStudyField && fieldOfStudyField.type === 'select') {
+        if (fieldOfStudyField && fieldOfStudyField.type === FIELD_TYPES.SELECT) {
           const dynamicOptions = await this.getStudyFieldOptions();
           fieldOfStudyField.options = dynamicOptions;
         }
       }
+
+      // Sort fields by order within sections if order is present
+      data.fields.sort((a, b) => (a.order || 0) - (b.order || 0));
 
       return data;
     } catch (error) {

@@ -46,8 +46,13 @@ export class DynamicQuestionCategoryService {
 
     if (error) throw error;
 
-    this.categories = data || [];
-    this.buildCategoryMap();
+    this.categories = Array.isArray(data) ? data : [];
+    if (this.categories.length === 0) {
+      // Fallback to system defaults to avoid empty dropdowns
+      this.initializeFallbackCategories();
+    } else {
+      this.buildCategoryMap();
+    }
     
     console.log(`Loaded ${this.categories.length} dynamic question categories`);
     return this.categories;

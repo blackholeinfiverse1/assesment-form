@@ -122,7 +122,7 @@ const KEYWORD_DEFAULTS = {
 };
 
 // Fields that students must always provide and cannot be removed
-const PROTECTED_FIELD_IDS = ['question_category','grade'];
+const PROTECTED_FIELD_IDS = ['question_category','grade','field_of_study'];
 
 function mergeValidation(existing, extra) {
   return { ...(existing || {}), ...(extra || {}) };
@@ -734,6 +734,20 @@ export default function FormBuilder({
           category_id: defaultCategory || categoryOptions?.[0]?.value || ''
         });
       }
+            // Ensure field_of_study is present and required
+            if (!present.has('field_of_study')) {
+              toAdd.push({
+                id: 'field_of_study',
+                type: FIELD_TYPES.SELECT,
+                label: 'What field are you studying or working in?',
+                placeholder: 'Select your field of study',
+                required: true,
+                section: 'academic_info',
+                order: -7,
+                study_field_id: defaultStudyField || fieldOptions?.[0]?.value || '',
+                category_id: defaultCategory || categoryOptions?.[0]?.value || ''
+              });
+            }
             if (!present.has('question_category')) {
         const templ = BACKGROUND_SELECTION_FIELDS?.question_category;
         const fallback = {
