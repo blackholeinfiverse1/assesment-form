@@ -30,6 +30,132 @@ import {
   Target,
 } from "lucide-react";
 
+// Type-specific defaults for auto-buffing fields
+const TYPE_DEFAULTS = {
+  [FIELD_TYPES.EMAIL]: {
+    label: "Email",
+    placeholder: "your.email@example.com",
+    validation: { pattern: "^[^\\\s@]+@[^\\\s@]+\\\.[^\\\s@]+$" }
+  },
+  [FIELD_TYPES.NUMBER]: {
+    label: "Number",
+    placeholder: "Enter a number"
+  },
+  [FIELD_TYPES.TEXT]: {
+    label: "Text Field",
+    placeholder: "Enter text here"
+  },
+  [FIELD_TYPES.TEXTAREA]: {
+    label: "Long Text",
+    placeholder: "Enter text here"
+  },
+  [FIELD_TYPES.SELECT]: { label: "Dropdown" },
+  [FIELD_TYPES.RADIO]: { label: "Radio Buttons" },
+  [FIELD_TYPES.CHECKBOX]: { label: "Checkboxes" },
+  [FIELD_TYPES.MULTI_SELECT]: { label: "Multi-Select" }
+};
+
+// Keyword-driven semantic defaults for common fields
+const KEYWORD_DEFAULTS = {
+  name: {
+    type: FIELD_TYPES.TEXT,
+    label: "Full Name",
+    placeholder: "e.g., Asha Gupta",
+    validation: { minLength: 2, maxLength: 100 }
+  },
+  full_name: {
+    type: FIELD_TYPES.TEXT,
+    label: "Full Name",
+    placeholder: "e.g., Asha Gupta",
+    validation: { minLength: 2, maxLength: 100 }
+  },
+  age: {
+    type: FIELD_TYPES.NUMBER,
+    label: "Age",
+    placeholder: "17",
+    validation: { min: 5, max: 100 }
+  },
+  phone: {
+    type: FIELD_TYPES.TEXT,
+    label: "Phone",
+    placeholder: "999-000-1234",
+    validation: { pattern: "^[\\\d\\\s\\\-\\\+\\\(\\\)\\\.]+$" }
+  },
+  email: {
+    type: FIELD_TYPES.EMAIL,
+    label: "Email",
+    placeholder: "your.email@example.com",
+    validation: TYPE_DEFAULTS[FIELD_TYPES.EMAIL].validation
+  },
+  student_id: { label: "Student ID", placeholder: "STU001" },
+  grade: { label: "Grade", placeholder: "10th, 11th, etc." },
+  education_level: { label: "Education Level", placeholder: "High school, Undergraduate, etc." },
+  field_of_study: { label: "Field of Study" },
+  current_skills: {
+    type: FIELD_TYPES.TEXTAREA,
+    label: "Current Skills (comma separated)",
+    placeholder: "JavaScript, Algebra, Writing"
+  },
+  interests: {
+    type: FIELD_TYPES.TEXTAREA,
+    label: "Interests (comma separated)",
+    placeholder: "Programming, Mathematics, Art"
+  },
+  goals: {
+    type: FIELD_TYPES.TEXTAREA,
+    label: "Goals",
+    placeholder: "What do you want to achieve?"
+  },
+  preferred_learning_style: { label: "Preferred Learning Style" },
+  availability_per_week_hours: {
+    type: FIELD_TYPES.NUMBER,
+    label: "Availability per week (hours)",
+    placeholder: "6",
+    validation: { min: 0, max: 168 }
+  },
+  experience_years: {
+    type: FIELD_TYPES.NUMBER,
+    label: "Prior experience (years)",
+    placeholder: "0",
+    validation: { min: 0, max: 50 }
+  }
+};
+
+function mergeValidation(existing, extra) {
+  return { ...(existing || {}), ...(extra || {}) };
+}
+
+function applySemanticDefaults(field) {
+  const text = `${field.id || ""} ${field.label || ""}`.toLowerCase();
+  let updated = { ...field };
+
+  for (const [keyword, defs] of Object.entries(KEYWORD_DEFAULTS)) {
+    if (text.includes(keyword)) {
+      // Type
+      if (defs.type && (!updated.type || updated.type === FIELD_TYPES.TEXT || updated._autoType)) {
+        updated.type = defs.type;
+        updated._autoType = true;
+      }
+      // Label
+      if (defs.label && (!updated.label || updated._autoLabel)) {
+        updated.label = defs.label;
+        updated._autoLabel = true;
+      }
+      // Placeholder
+      if (defs.placeholder && (!updated.placeholder || updated._autoPlaceholder)) {
+        updated.placeholder = defs.placeholder;
+        updated._autoPlaceholder = true;
+      }
+      // Validation
+      if (defs.validation) {
+        updated.validation = mergeValidation(updated.validation, defs.validation);
+      }
+    }
+  }
+
+  return updated;
+}
+
 // Custom Dropdown Component
 const CustomDropdown = ({ onSelect, className = "" }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -102,6 +228,8 @@ const FieldEditor = ({
   onMoveDown,
   canMoveUp,
   canMoveDown,
+  isMovedUp = false,
+  isMovedDown = false,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [localField, setLocalField] = useState(field);
@@ -111,7 +239,10 @@ const FieldEditor = ({
   }, [field]);
 
   const handleChange = (key, value) => {
-    const updatedField = { ...localField, [key]: value };
+    let updatedField = { ...localField, [key]: value };
+    if (key === "id" || key === "label") {
+      updatedField = applySemanticDefaults(updatedField);
+    }
     setLocalField(updatedField);
     onUpdate(updatedField);
   };
@@ -171,8 +302,38 @@ const FieldEditor = ({
     return names[type] || type;
   };
 
+  const handleTypeChange = (newType) => {
+    const defaults = TYPE_DEFAULTS[newType] || {};
+    const updated = { ...localField, type: newType };
+
+    if ((!localField.label || localField._autoLabel) && defaults.label) {
+      updated.label = defaults.label;
+      updated._autoLabel = true;
+    }
+    if (defaults.placeholder && (!localField.placeholder || localField._autoPlaceholder)) {
+      updated.placeholder = defaults.placeholder;
+      updated._autoPlaceholder = true;
+    }
+
+    // Clear options when switching to non-option types
+    if (![FIELD_TYPES.SELECT, FIELD_TYPES.RADIO, FIELD_TYPES.CHECKBOX, FIELD_TYPES.MULTI_SELECT].includes(newType)) {
+      if (updated.options) delete updated.options;
+    }
+
+    // Add basic email validation pattern
+    if (newType === FIELD_TYPES.EMAIL) {
+      updated.validation = {
+        ...(localField.validation || {}),
+        pattern: (localField.validation && localField.validation.pattern) || TYPE_DEFAULTS[FIELD_TYPES.EMAIL].validation.pattern
+      };
+    }
+
+    setLocalField(updated);
+    onUpdate(updated);
+  };
+
   return (
-    <div className="group border border-white/20 rounded-xl p-5 bg-gradient-to-r from-white/5 to-white/8 hover:from-white/8 hover:to-white/12 transition-all duration-200 shadow-lg hover:shadow-xl">
+    <div className={`group border border-white/20 rounded-xl p-5 bg-gradient-to-r from-white/5 to-white/8 hover:from-white/8 hover:to-white/12 transition-all duration-300 shadow-lg hover:shadow-xl will-change-transform ${isMovedUp ? 'animate-move-up ring-1 ring-orange-400/40' : ''} ${isMovedDown ? 'animate-move-down ring-1 ring-orange-400/40' : ''}`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4 flex-1">
           <button
@@ -260,7 +421,7 @@ const FieldEditor = ({
               <label className="label">Field Type</label>
               <select
                 value={localField.type}
-                onChange={(e) => handleChange("type", e.target.value)}
+                onChange={(e) => handleTypeChange(e.target.value)}
                 className="input"
               >
                 {Object.entries(FIELD_TYPES).map(([key, value]) => (
@@ -476,6 +637,8 @@ export default function FormBuilder({
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [defaultStudyField, setDefaultStudyField] = useState("");
   const [defaultCategory, setDefaultCategory] = useState("");
+  const prevDefaultsRef = useRef({ studyField: "", category: "" });
+  const [moved, setMoved] = useState({ id: null, dir: null });
 
   useEffect(() => {
     let mounted = true;
@@ -491,6 +654,12 @@ export default function FormBuilder({
           // Initialize defaults if not set
           setDefaultStudyField((prev) => prev || fields?.[0]?.value || "");
           setDefaultCategory((prev) => prev || categories?.[0]?.value || "");
+          if (!prevDefaultsRef.current.studyField) {
+            prevDefaultsRef.current.studyField = fields?.[0]?.value || "";
+          }
+          if (!prevDefaultsRef.current.category) {
+            prevDefaultsRef.current.category = categories?.[0]?.value || "";
+          }
         }
       } catch (e) {
         console.error("Failed to load dynamic options:", e);
@@ -516,7 +685,28 @@ export default function FormBuilder({
           if (!sf) sf = defaultStudyField || fieldOptions[0]?.value || "";
           if (!cat) cat = defaultCategory || categoryOptions[0]?.value || "";
 
-          return { ...f, study_field_id: sf, category_id: cat };
+          const typeDefaults = TYPE_DEFAULTS[f.type] || {};
+          let label = f.label;
+          let placeholder = f.placeholder;
+          let validation = f.validation;
+
+          if ((!label || f._autoLabel) && typeDefaults.label) {
+            label = typeDefaults.label;
+          }
+          if ((!placeholder || f._autoPlaceholder) && typeDefaults.placeholder) {
+            placeholder = typeDefaults.placeholder;
+          }
+          if (f.type === FIELD_TYPES.EMAIL) {
+            validation = {
+              ...(f.validation || {}),
+              pattern: (f.validation && f.validation.pattern) || TYPE_DEFAULTS[FIELD_TYPES.EMAIL].validation.pattern
+            };
+          }
+
+          let buffed = { ...f, study_field_id: sf, category_id: cat, label, placeholder, validation };
+          // Apply semantic defaults based on id/label content
+          buffed = applySemanticDefaults(buffed);
+          return buffed;
         });
         return updated;
       });
@@ -543,6 +733,33 @@ export default function FormBuilder({
     run();
   }, [fieldOptions, categoryOptions, defaultStudyField, defaultCategory]);
 
+  // When defaults change, propagate to fields that were using previous defaults or unset
+  useEffect(() => {
+    if (!fieldOptions.length || !categoryOptions.length) return;
+
+    const prevStudy = prevDefaultsRef.current.studyField;
+    const prevCat = prevDefaultsRef.current.category;
+
+    if (prevStudy === defaultStudyField && prevCat === defaultCategory) return;
+
+    setConfig((prev) => {
+      const updated = { ...prev };
+      updated.fields = prev.fields.map((f) => {
+        const nf = { ...f };
+        if (!nf.study_field_id || nf.study_field_id === prevStudy) {
+          nf.study_field_id = defaultStudyField || fieldOptions[0]?.value || "";
+        }
+        if (!nf.category_id || nf.category_id === prevCat) {
+          nf.category_id = defaultCategory || categoryOptions[0]?.value || "";
+        }
+        return nf;
+      });
+      return updated;
+    });
+
+    prevDefaultsRef.current = { studyField: defaultStudyField, category: defaultCategory };
+  }, [defaultStudyField, defaultCategory, fieldOptions, categoryOptions]);
+
   const addField = (fieldType = FIELD_TYPES.TEXT) => {
     const fieldTypeNames = {
       [FIELD_TYPES.TEXT]: "Text Field",
@@ -555,20 +772,25 @@ export default function FormBuilder({
       [FIELD_TYPES.MULTI_SELECT]: "Multi-Select",
     };
 
+    const defaults = TYPE_DEFAULTS[fieldType] || {};
     const newField = {
       id: `field_${Date.now()}`,
       type: fieldType,
-      label: fieldTypeNames[fieldType] || "New Field",
+      label: defaults.label || fieldTypeNames[fieldType] || "New Field",
       placeholder:
-        fieldType === FIELD_TYPES.EMAIL
-          ? "Enter your email"
-          : fieldType === FIELD_TYPES.NUMBER
+        (defaults.placeholder) ||
+        (fieldType === FIELD_TYPES.NUMBER
           ? "Enter a number"
-          : "Enter text here",
+          : "Enter text here"),
+      _autoLabel: !!defaults.label,
+      _autoPlaceholder: !!defaults.placeholder,
       required: false,
       study_field_id: defaultStudyField || fieldOptions?.[0]?.value || "",
       category_id: defaultCategory || categoryOptions?.[0]?.value || "",
       order: config.fields.length + 1,
+      ...(fieldType === FIELD_TYPES.EMAIL && defaults.validation
+        ? { validation: { ...defaults.validation } }
+        : {})
     };
 
     // Add default options for select/radio/checkbox fields
@@ -620,6 +842,7 @@ export default function FormBuilder({
     const targetIndex = direction === "up" ? index - 1 : index + 1;
 
     if (targetIndex >= 0 && targetIndex < newFields.length) {
+      const movedId = newFields[index]?.id;
       const fieldName = newFields[index].label || "Field";
 
       [newFields[index], newFields[targetIndex]] = [
@@ -633,6 +856,12 @@ export default function FormBuilder({
       });
 
       setConfig((prev) => ({ ...prev, fields: newFields }));
+
+      // Trigger animation on moved field
+      if (movedId) {
+        setMoved({ id: movedId, dir: direction });
+        setTimeout(() => setMoved({ id: null, dir: null }), 400);
+      }
 
       // Show success toast
       toast.success(`${fieldName} moved ${direction} successfully`);
@@ -678,6 +907,12 @@ export default function FormBuilder({
 
   return (
     <div className="space-y-6">
+      <style>{`
+        @keyframes fb-move-up { 0% { transform: translateY(0); } 50% { transform: translateY(-8px); } 100% { transform: translateY(0); } }
+        @keyframes fb-move-down { 0% { transform: translateY(0); } 50% { transform: translateY(8px); } 100% { transform: translateY(0); } }
+        .animate-move-up { animation: fb-move-up 300ms ease-out; }
+        .animate-move-down { animation: fb-move-down 300ms ease-out; }
+      `}</style>
       <div>
         <h3 className="text-lg font-semibold text-white mb-4">
           Form Configuration
@@ -791,6 +1026,9 @@ export default function FormBuilder({
                 </select>
               </div>
             </div>
+            <div className="text-xs text-white/60 mt-2">
+              Changing defaults updates all fields that are unset or were using the previous default.
+            </div>
           </div>
 
           <div className="flex items-center justify-between mb-4">
@@ -879,6 +1117,8 @@ export default function FormBuilder({
                 onMoveDown={() => moveField(index, "down")}
                 canMoveUp={index > 0}
                 canMoveDown={index < config.fields.length - 1}
+                isMovedUp={moved.id === field.id && moved.dir === 'up'}
+                isMovedDown={moved.id === field.id && moved.dir === 'down'}
               />
             ))}
 
