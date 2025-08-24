@@ -154,6 +154,51 @@ class FieldBasedQuestionService {
         return result;
       };
 
+      // Fast path: if curated DB has enough relevant questions for this category, just shuffle and return them
+      try {
+        const allDiffs = [
+          DIFFICULTY_LEVELS.EASY,
+          DIFFICULTY_LEVELS.MEDIUM,
+          DIFFICULTY_LEVELS.HARD,
+        ];
+        const poolTexts = new Set();
+        const poolIds = new Set();
+        let curatedPool = [];
+        for (const d of allDiffs) {
+          const batch = await this.getQuestionsFromDatabase(
+            primaryCategory,
+            d,
+            totalQuestions * 2,
+            [],
+            false // include admin + AI (no level filtering in fast path)
+          );
+          for (const q of batch) {
+            const nt = ((q.question_text || "").toLowerCase().replace(/[^\w\s]/g, "").replace(/\s+/g, " ").trim());
+            const qid = q.question_id || q.id;
+            if (!nt) continue;
+            if (poolTexts.has(nt)) continue;
+            if (qid && poolIds.has(qid)) continue;
+            poolTexts.add(nt);
+            if (qid) poolIds.add(qid);
+            curatedPool.push(q);
+          }
+        }
+        if (curatedPool.length >= totalQuestions) {
+          const picked = this.selectRandomQuestions(curatedPool, totalQuestions).map((q) => ({
+            ...q,
+            category: primaryCategory,
+            difficulty: q.difficulty || DIFFICULTY_LEVELS.MEDIUM,
+            type: "multiple_choice",
+            points: q.points ?? 10,
+            time_limit_seconds: q.time_limit_seconds ?? 180,
+          }));
+          console.log(`🧮 Using curated shuffled pool only: ${picked.length}/${totalQuestions} (category=${primaryCategory})`);
+          return picked;
+        }
+      } catch (curErr) {
+        console.warn("Curated fast-path failed, continuing with blended flow:", curErr?.message || curErr);
+      }
+
       // Check if AI question generation is enabled globally
       const isAIEnabled = await aiSettingsService.isAIEnabled();
       console.log(
@@ -781,10 +826,15 @@ class FieldBasedQuestionService {
         `🏷️ Category resolution: input="${category}" -> categoryId="${categoryId}", name="${categoryName}"`
       );
 
-      if (categoryId) {
+      const isUUID =
+        typeof categoryId === "string" &&
+        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+          categoryId || ""
+        );
+      if (isUUID) {
         query = query.eq("category_id", categoryId);
       } else {
-        // Use ilike for case-insensitive category matching
+        // Use ilike for case-insensitive category matching (fallback when category_id is absent or invalid)
         query = query.ilike("category", categoryName || category);
       }
 
@@ -818,6 +868,41 @@ class FieldBasedQuestionService {
       }
 
       let pool = data || [];
+
+      // If not enough and level filter was applied, try contains(tags) for jsonb arrays
+      if (
+        pool.length < count &&
+        Array.isArray(levelTags) &&
+        levelTags.length > 0
+      ) {
+        console.log(`🔁 Retrying with contains(tags) for JSONB array support...`);
+        let containsQuery = supabase
+          .from("question_banks")
+          .select("*")
+          .eq("is_active", true)
+          .ilike("difficulty", difficulty)
+          .limit(count * 2);
+
+        if (excludeAI) {
+          containsQuery = containsQuery.eq("created_by", "admin");
+        }
+
+        if (categoryId) {
+          containsQuery = containsQuery.eq("category_id", categoryId);
+        } else {
+          containsQuery = containsQuery.ilike("category", categoryName || category);
+        }
+
+        containsQuery = containsQuery.contains("tags", levelTags);
+        const { data: containsData, error: containsErr } = await containsQuery;
+        if (!containsErr && containsData) {
+          console.log(`✅ Contains(tags) query returned ${containsData.length} additional questions`);
+          const ids0 = new Set(pool.map((q) => q.question_id));
+          containsData.forEach((q) => {
+            if (!ids0.has(q.question_id)) pool.push(q);
+          });
+        }
+      }
 
       // If not enough and level filter was applied, try without level as fallback
       if (
@@ -904,6 +989,45 @@ class FieldBasedQuestionService {
       
       
       
+      // If still not enough and we were admin-only, retry including AI-authored with same filters
+      if (pool.length < count && excludeAI) {
+        console.log(`🧩 Admin-only returned ${pool.length}/${count}. Including AI-authored questions as fallback...`);
+        let anyAIQuery = supabase
+          .from("question_banks")
+          .select("*")
+          .eq("is_active", true)
+          .limit(count * 3);
+
+        const isUUID2 =
+          typeof categoryId === "string" &&
+          /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+            categoryId || ""
+          );
+        if (isUUID2) {
+          anyAIQuery = anyAIQuery.eq("category_id", categoryId);
+        } else {
+          anyAIQuery = anyAIQuery.ilike("category", categoryName || category);
+        }
+
+        if (difficulty) {
+          anyAIQuery = anyAIQuery.ilike("difficulty", difficulty);
+        }
+        if (Array.isArray(levelTags) && levelTags.length > 0) {
+          anyAIQuery = anyAIQuery.overlaps("tags", levelTags);
+        }
+
+        const { data: anyAIData, error: anyAIErr } = await anyAIQuery;
+        if (!anyAIErr && anyAIData) {
+          const idsAI = new Set(pool.map((q) => q.question_id));
+          anyAIData.forEach((q) => {
+            if (!idsAI.has(q.question_id)) pool.push(q);
+          });
+          console.log(`✅ AI-inclusive fallback added ${pool.length} total questions`);
+        } else if (anyAIErr) {
+          console.warn("⚠️ AI-inclusive fallback query error:", anyAIErr);
+        }
+      }
+
       console.log(`📊 Final pool size: ${pool.length} questions`);
       return this.selectRandomQuestions(pool, count);
     } catch (error) {
@@ -964,7 +1088,12 @@ class FieldBasedQuestionService {
         const { categoryId, name: categoryName } = await this.resolveCategory(
           category
         );
-        if (categoryId) {
+        const isUUID =
+          typeof categoryId === "string" &&
+          /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+            categoryId || ""
+          );
+        if (isUUID) {
           query = query.eq("category_id", categoryId);
         } else {
           query = query.eq("category", categoryName || category);
@@ -984,6 +1113,35 @@ class FieldBasedQuestionService {
       }
 
       let pool = data || [];
+      // If not enough and level filter applied, try contains(tags) for jsonb arrays
+      if (
+        pool.length < count &&
+        Array.isArray(levelTags) &&
+        levelTags.length > 0
+      ) {
+        const r = await this.resolveCategory(category);
+        let containsQuery = supabase
+          .from("question_banks")
+          .select("*")
+          .in("question_id", ids)
+          .ilike("difficulty", difficulty)
+          .eq("is_active", true)
+          .limit(count * 2);
+        if (excludeAI) {
+          containsQuery = containsQuery.eq("created_by", "admin");
+        }
+        containsQuery = r.categoryId
+          ? containsQuery.eq("category_id", r.categoryId)
+          : containsQuery.eq("category", r.name || category);
+        containsQuery = containsQuery.contains("tags", levelTags);
+        const { data: containsData, error: containsErr } = await containsQuery;
+        if (!containsErr && containsData) {
+          const idset0 = new Set(pool.map((q) => q.question_id));
+          containsData.forEach((q) => {
+            if (!idset0.has(q.question_id)) pool.push(q);
+          });
+        }
+      }
       // If not enough and level filter applied, try without level
       if (
         pool.length < count &&
@@ -1037,6 +1195,37 @@ class FieldBasedQuestionService {
           catOnlyData.forEach((q) => {
             if (!ids2.has(q.question_id)) pool.push(q);
           });
+        }
+      }
+
+      // If still not enough and we were admin-only, retry including AI-authored with same filters
+      if (pool.length < count && excludeAI) {
+        try {
+          console.log(`🧩 Admin-only mapped returned ${pool.length}/${count}. Including AI-authored questions as fallback...`);
+          const r3 = await this.resolveCategory(category);
+          let anyAIQuery = supabase
+            .from("question_banks")
+            .select("*")
+            .in("question_id", ids)
+            .eq("is_active", true)
+            .limit(count * 3);
+          anyAIQuery = r3.categoryId
+            ? anyAIQuery.eq("category_id", r3.categoryId)
+            : anyAIQuery.eq("category", r3.name || category);
+          if (difficulty) anyAIQuery = anyAIQuery.ilike("difficulty", difficulty);
+          if (Array.isArray(levelTags) && levelTags.length > 0) {
+            anyAIQuery = anyAIQuery.overlaps("tags", levelTags);
+          }
+          const { data: anyAIData, error: anyAIErr } = await anyAIQuery;
+          if (!anyAIErr && anyAIData) {
+            const idsAI = new Set(pool.map((q) => q.question_id));
+            anyAIData.forEach((q) => {
+              if (!idsAI.has(q.question_id)) pool.push(q);
+            });
+            console.log(`✅ AI-inclusive mapped fallback added ${pool.length} total questions`);
+          }
+        } catch (e) {
+          console.warn("⚠️ AI-inclusive mapped fallback failed:", e?.message || e);
         }
       }
 
