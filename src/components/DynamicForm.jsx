@@ -403,6 +403,8 @@ export default function DynamicForm({
   const [studyFieldOptions, setStudyFieldOptions] = useState([]);
   const [errors, setErrors] = useState({});
   const [categoryOrder, setCategoryOrder] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [categorySelectOptions, setCategorySelectOptions] = useState([]);
   
   // Load dynamic study fields for field_of_study field
   useEffect(() => {
@@ -437,6 +439,29 @@ export default function DynamicForm({
     if (hasFieldOfStudy) {
       loadStudyFields();
     }
+  }, [config.fields]);
+  
+  // Load dynamic categories for question_category select
+  useEffect(() => {
+    const hasCategoryField = config.fields?.some(field => field.id === 'question_category');
+    if (!hasCategoryField) return;
+    const loadCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const categories = await DynamicCategoryService.getAllCategories();
+        const options = (categories || [])
+          .filter(c => c.is_active !== false)
+          .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+          .map(c => ({ value: c.category_id, label: c.name }));
+        setCategorySelectOptions(options);
+      } catch (error) {
+        console.error('Error loading categories for select:', error);
+        setCategorySelectOptions([]);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    loadCategories();
   }, [config.fields]);
   
   // Load dynamic category order
@@ -478,7 +503,8 @@ export default function DynamicForm({
     config.fields?.forEach((field) => {
       const value = formData[field.id];
       
-      if (field.required && (!value || value === "")) {
+      const isReq = field.required || ['field_of_study','question_category','name','email','grade'].includes(field.id);
+      if (isReq && (!value || value === "")) {
         newErrors[field.id] = `${field.label} is required`;
       }
     });
@@ -499,34 +525,54 @@ export default function DynamicForm({
   };
 
   const renderField = (field) => {
+    const isAlwaysRequired = ['field_of_study','question_category','name','email','grade'].includes(field.id);
+    const effectiveField = isAlwaysRequired ? { ...field, required: true } : field;
     const commonProps = {
-      field,
-      value: formData[field.id],
+      field: effectiveField,
+      value: formData[effectiveField.id],
       onChange: handleInputChange,
-      error: errors[field.id],
+      error: errors[effectiveField.id],
     };
     
-    // Special handling for field_of_study with dynamic options
-    if (field.id === 'field_of_study') {
+    // Special handling for field_of_study with dynamic options (dropdown)
+    if (effectiveField.id === 'field_of_study') {
       if (loadingStudyFields) {
         return (
-          <div key={field.id} className="flex items-center justify-center py-8">
+          <div key={effectiveField.id} className="flex items-center justify-center py-8">
             <Loader className="w-6 h-6 text-orange-400 animate-spin" />
             <span className="ml-2 text-white/70">Loading study fields...</span>
           </div>
         );
       }
-      
-      return (
-        <CardGridField 
-          key={field.id} 
-          {...commonProps} 
-          options={studyFieldOptions}
-        />
-      );
+      const fieldWithOptions = {
+        ...effectiveField,
+        type: FIELD_TYPES.SELECT,
+        options: studyFieldOptions,
+        placeholder: effectiveField.placeholder || 'Select your field of study'
+      };
+      return <SelectField key={fieldWithOptions.id} field={fieldWithOptions} value={formData[fieldWithOptions.id]} onChange={handleInputChange} error={errors[fieldWithOptions.id]} />;
     }
 
-    switch (field.type) {
+    // Special handling for question_category with dynamic options (dropdown)
+    if (effectiveField.id === 'question_category') {
+      if (loadingCategories) {
+        return (
+          <div key={effectiveField.id} className="flex items-center justify-center py-8">
+            <Loader className="w-6 h-6 text-orange-400 animate-spin" />
+            <span className="ml-2 text-white/70">Loading categories...</span>
+          </div>
+        );
+      }
+      const categoryField = {
+        ...effectiveField,
+        type: FIELD_TYPES.SELECT,
+        options: categorySelectOptions,
+        placeholder: effectiveField.placeholder || 'Select a category'
+      };
+      return <SelectField key={categoryField.id} field={categoryField} value={formData[categoryField.id]} onChange={handleInputChange} error={errors[categoryField.id]} />;
+    }
+
+    switch (effectiveField.type) {
       case FIELD_TYPES.TEXT:
       case FIELD_TYPES.EMAIL:
       case FIELD_TYPES.PASSWORD:

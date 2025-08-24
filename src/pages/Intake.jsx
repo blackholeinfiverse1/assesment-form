@@ -4,8 +4,6 @@ import { supabase, SUPABASE_TABLE } from "../lib/supabaseClient";
 import { useNavigate, Link } from "react-router-dom";
 import DynamicForm from "../components/DynamicForm";
 import { FormConfigService } from "../lib/formConfigService";
-import { EnhancedFormConfigService } from "../lib/enhancedFormConfigService";
-import { backgroundSelectionService } from "../lib/backgroundSelectionService";
 import { ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -19,22 +17,16 @@ function Intake() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-  const [backgroundSelectionComplete, setBackgroundSelectionComplete] = useState(false);
-  const [currentFormConfig, setCurrentFormConfig] = useState(null);
+    const [currentFormConfig, setCurrentFormConfig] = useState(null);
 
   useEffect(() => {
     async function loadFormConfigAndProfile() {
       try {
-        // Load enhanced form configuration with background selection
-        let config = await EnhancedFormConfigService.createEnhancedFormConfig(
-          await FormConfigService.getActiveFormConfig() || { fields: [] },
-          {}, // Admin configuration - could be loaded from database
-          true // Include background selection
-        );
+        // Load active form configuration exactly as saved by admin
+        let config = await FormConfigService.getActiveFormConfig() || { fields: [] };
 
         console.log("Enhanced form config loaded:", config);
 
-        setFormConfig(config);
         setFormConfig(config);
         setCurrentFormConfig(config);
 
@@ -114,26 +106,7 @@ function Intake() {
             console.log("Setting existing form data:", existingForm);
             setFormData(existingForm);
 
-            // Check if background selection is complete
-            const backgroundComplete = EnhancedFormConfigService.isBackgroundSelectionComplete(existingForm);
-            setBackgroundSelectionComplete(backgroundComplete);
-
-            // If background selection is complete, load field-specific config
-            if (backgroundComplete) {
-              try {
-                const fieldSpecificConfig = await EnhancedFormConfigService.getFieldSpecificFormConfig(
-                  existingForm.field_of_study,
-                  existingForm.class_level,
-                  existingForm.learning_goals
-                );
-                setCurrentFormConfig(fieldSpecificConfig);
-                console.log("Loaded field-specific config:", fieldSpecificConfig);
-              } catch (error) {
-                console.error("Error loading field-specific config:", error);
-                // Fall back to base config
-              }
-            }
-          } else {
+                      } else {
             console.log("No existing profile found, setting initial form data");
             setFormData(initialFormData);
           }
@@ -150,47 +123,9 @@ function Intake() {
       loadFormConfigAndProfile();
     }
   }, [user]);
-  // Handle field changes and dynamic form updates
+  // Handle field changes
   const handleFieldChange = (fieldName, fieldValue, updatedFormData) => {
-    console.log('Field changed:', fieldName, fieldValue);
     setFormData(updatedFormData);
-    
-    // Check if this is a background selection field change
-    if (['field_of_study', 'class_level', 'learning_goals'].includes(fieldName)) {
-      const backgroundComplete = EnhancedFormConfigService.isBackgroundSelectionComplete(updatedFormData);
-      
-      if (backgroundComplete && !backgroundSelectionComplete) {
-        setBackgroundSelectionComplete(true);
-        
-        // Load field-specific configuration
-        loadFieldSpecificConfig(
-          updatedFormData.field_of_study,
-          updatedFormData.class_level,
-          updatedFormData.learning_goals
-        );
-      }
-    }
-  };
-  
-  // Load field-specific configuration when background selection is complete
-  const loadFieldSpecificConfig = async (fieldOfStudy, classLevel, learningGoals) => {
-    try {
-      console.log('Loading field-specific config for:', { fieldOfStudy, classLevel, learningGoals });
-      
-      const fieldSpecificConfig = await EnhancedFormConfigService.getFieldSpecificFormConfig(
-        fieldOfStudy,
-        classLevel,
-        learningGoals
-      );
-      
-      setCurrentFormConfig(fieldSpecificConfig);
-      toast.success('Form personalized based on your background!');
-      
-      console.log('Field-specific config loaded:', fieldSpecificConfig);
-    } catch (error) {
-      console.error('Error loading field-specific config:', error);
-      toast.error('Failed to personalize form');
-    }
   };
 
   async function submit(formData) {
@@ -254,20 +189,7 @@ function Intake() {
         throw supabaseError;
       }
 
-      // Save background selection separately for compatibility
-      if (EnhancedFormConfigService.isBackgroundSelectionComplete(formData)) {
-        try {
-          await backgroundSelectionService.saveBackgroundSelection({
-            fieldOfStudy: formData.field_of_study,
-            classLevel: formData.class_level,
-            learningGoals: formData.learning_goals
-          }, user.id);
-        } catch (backgroundError) {
-          console.warn("Background selection save warning:", backgroundError);
-          // Don't fail the entire submission for this
-        }
-      }
-
+      
       setSuccess(
         isEditing
           ? "Profile updated successfully!"
@@ -344,25 +266,7 @@ function Intake() {
                 }
               </p>
               
-              {/* Progress indicator for background selection */}
-              {!isEditing && (
-                <div className="mt-4 p-4 bg-white/10 rounded-xl border border-white/20">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${
-                      EnhancedFormConfigService.isBackgroundSelectionComplete(formData) 
-                        ? 'bg-green-400' 
-                        : 'bg-orange-400 animate-pulse'
-                    }`}></div>
-                    <span className="text-white text-sm">
-                      {EnhancedFormConfigService.isBackgroundSelectionComplete(formData)
-                        ? 'Background selection complete - form personalized!'
-                        : 'Complete your background selection to personalize the form'
-                      }
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
+                          </div>
 
             {/* Error and Success Messages */}
             {error && (

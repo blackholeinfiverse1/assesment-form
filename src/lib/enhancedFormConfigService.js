@@ -63,6 +63,17 @@ export const BACKGROUND_SELECTION_FIELDS = {
       displayType: "card_grid",
       gridCols: "2"
     }
+  },
+  
+  // New: let students choose a question category (required)
+  question_category: {
+    id: "question_category",
+    type: FIELD_TYPES.SELECT,
+    label: "Which question category do you prefer?",
+    required: true,
+    order: 0,
+    section: "background_selection",
+    options: [] // Loaded dynamically in DynamicForm
   }
 };
 

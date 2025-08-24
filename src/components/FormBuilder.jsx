@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import { FIELD_TYPES, FormConfigService } from "../lib/formConfigService";
-import { EnhancedFormConfigService } from "../lib/enhancedFormConfigService";
+import { EnhancedFormConfigService, BACKGROUND_SELECTION_FIELDS } from "../lib/enhancedFormConfigService";
 import { DynamicFieldService } from "../lib/dynamicFieldService";
 import { DynamicQuestionCategoryService } from "../lib/dynamicQuestionCategoryService";
 import DynamicForm from "./DynamicForm";
@@ -120,6 +120,9 @@ const KEYWORD_DEFAULTS = {
     validation: { min: 0, max: 50 }
   }
 };
+
+// Fields that students must always provide and cannot be removed
+const PROTECTED_FIELD_IDS = ['field_of_study','question_category','grade'];
 
 function mergeValidation(existing, extra) {
   return { ...(existing || {}), ...(extra || {}) };
@@ -396,8 +399,9 @@ const FieldEditor = ({
           </div>
           <button
             onClick={onDelete}
-            className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 transition-all duration-200"
-            title="Delete field"
+            disabled={PROTECTED_FIELD_IDS.includes(localField.id)}
+            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 ${PROTECTED_FIELD_IDS.includes(localField.id) ? 'bg-red-500/10 text-red-400/40 cursor-not-allowed' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300'}`}
+            title={PROTECTED_FIELD_IDS.includes(localField.id) ? "This field is required and cannot be deleted" : "Delete field"}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -471,11 +475,14 @@ const FieldEditor = ({
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={localField.required || false}
-                onChange={(e) => handleChange("required", e.target.checked)}
+                checked={PROTECTED_FIELD_IDS.includes(localField.id) ? true : (localField.required || false)}
+                onChange={(e) => !PROTECTED_FIELD_IDS.includes(localField.id) && handleChange("required", e.target.checked)}
                 className="text-orange-500"
+                disabled={PROTECTED_FIELD_IDS.includes(localField.id)}
               />
-              <span className="text-white/90">Required</span>
+              <span className="text-white/90">
+                Required{PROTECTED_FIELD_IDS.includes(localField.id) ? ' (locked)' : ''}
+              </span>
             </label>
           </div>
 
@@ -669,6 +676,112 @@ export default function FormBuilder({
       mounted = false;
     };
   }, []);
+
+  // Ensure mandatory fields exist by default
+  useEffect(() => {
+    setConfig((prev) => {
+      const present = new Set((prev.fields || []).map(f => f.id));
+      const toAdd = [];
+
+      if (!present.has('name')) {
+        toAdd.push({
+          id: 'name',
+          type: FIELD_TYPES.TEXT,
+          label: 'Full Name',
+          placeholder: 'e.g., Asha Gupta',
+          required: true,
+          section: 'personal_info',
+          order: -10,
+          validation: { minLength: 2, maxLength: 100 },
+          study_field_id: defaultStudyField || fieldOptions?.[0]?.value || '',
+          category_id: defaultCategory || categoryOptions?.[0]?.value || ''
+        });
+      }
+      if (!present.has('email')) {
+        toAdd.push({
+          id: 'email',
+          type: FIELD_TYPES.EMAIL,
+          label: 'Email',
+          placeholder: 'your.email@example.com',
+          required: true,
+          section: 'personal_info',
+          order: -9,
+          validation: { pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$" },
+          study_field_id: defaultStudyField || fieldOptions?.[0]?.value || '',
+          category_id: defaultCategory || categoryOptions?.[0]?.value || ''
+        });
+      }
+      if (!present.has('grade')) {
+        toAdd.push({
+          id: 'grade',
+          type: FIELD_TYPES.SELECT,
+          label: 'Grade',
+          placeholder: 'Select your grade',
+          required: true,
+          section: 'personal_info',
+          order: -8,
+          options: [
+            { value: '9', label: '9th Grade' },
+            { value: '10', label: '10th Grade' },
+            { value: '11', label: '11th Grade' },
+            { value: '12', label: '12th Grade' },
+            { value: 'undergraduate', label: 'Undergraduate' },
+            { value: 'graduate', label: 'Graduate' },
+            { value: 'postgraduate', label: 'Postgraduate' },
+            { value: 'other', label: 'Other' }
+          ],
+          study_field_id: defaultStudyField || fieldOptions?.[0]?.value || '',
+          category_id: defaultCategory || categoryOptions?.[0]?.value || ''
+        });
+      }
+      if (!present.has('field_of_study')) {
+        const templ = BACKGROUND_SELECTION_FIELDS?.field_of_study;
+        const fallback = {
+          id: 'field_of_study',
+          type: FIELD_TYPES.SELECT,
+          label: 'Field of Study',
+          section: 'background_selection',
+          order: -3,
+          options: []
+        };
+        toAdd.push({
+          ...(templ || fallback),
+          required: true,
+          section: (templ && templ.section) || 'background_selection',
+          order: (templ && (templ.order ?? -3)) ?? -3,
+          study_field_id: defaultStudyField || fieldOptions?.[0]?.value || '',
+          category_id: defaultCategory || categoryOptions?.[0]?.value || ''
+        });
+      }
+      if (!present.has('question_category')) {
+        const templ = BACKGROUND_SELECTION_FIELDS?.question_category;
+        const fallback = {
+          id: 'question_category',
+          type: FIELD_TYPES.SELECT,
+          label: 'Question Category',
+          section: 'background_selection',
+          order: 0,
+          options: []
+        };
+        toAdd.push({
+          ...(templ || fallback),
+          required: true,
+          section: (templ && templ.section) || 'background_selection',
+          order: (templ && (templ.order ?? 0)) ?? 0,
+          study_field_id: defaultStudyField || fieldOptions?.[0]?.value || '',
+          category_id: defaultCategory || categoryOptions?.[0]?.value || ''
+        });
+      }
+
+      if (toAdd.length === 0) return prev;
+      const merged = [...prev.fields, ...toAdd].reduce((acc, f) => {
+        if (!acc.find(x => x.id === f.id)) acc.push(f);
+        return acc;
+      }, []);
+      merged.sort((a,b)=>(a.order||0)-(b.order||0));
+      return { ...prev, fields: merged };
+    });
+  }, [fieldOptions, categoryOptions, defaultStudyField, defaultCategory]);
 
   useEffect(() => {
     // Auto-assign study field and question category for fields that are missing them
@@ -868,6 +981,44 @@ export default function FormBuilder({
     }
   };
 
+  // Add student-facing background selection fields to the form
+  const addBackgroundField = (fieldId) => {
+    const template = BACKGROUND_SELECTION_FIELDS[fieldId];
+    if (!template) return;
+
+    setConfig((prev) => {
+      // Skip if already present
+      if (prev.fields.some((f) => f.id === fieldId)) {
+        toast.success(`${template.label} is already in the form`);
+        return prev;
+      }
+
+      // Determine order
+      const nextOrder = (prev.fields?.length || 0) + 1;
+
+      const newField = {
+        ...template,
+        // Ensure validation and section are preserved
+        section: template.section || 'background_selection',
+        order: template.order ?? nextOrder,
+        // Satisfy internal classification metadata for validation
+        study_field_id: defaultStudyField || fieldOptions?.[0]?.value || '',
+        category_id: defaultCategory || categoryOptions?.[0]?.value || ''
+      };
+
+      return {
+        ...prev,
+        fields: [...prev.fields, newField],
+      };
+    });
+
+    toast.success(`${template.label} added to the form`);
+  };
+
+  const addAllBackgroundFields = () => {
+    ['field_of_study', 'class_level', 'learning_goals', 'question_category'].forEach(addBackgroundField);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setErrors([]);
@@ -995,39 +1146,55 @@ export default function FormBuilder({
       {/* Form Builder Tab */}
       {activeTab === "builder" && (
         <div>
-          {/* Global classification defaults */}
+          
+          {/* Student Background Fields (students will choose these in the form) */}
           <div className="mb-6 p-4 rounded-xl border border-white/20 bg-white/10">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-md font-semibold text-white">Field Classification Defaults</h4>
+              <h4 className="text-md font-semibold text-white">Student Background Fields</h4>
+              <button
+                type="button"
+                onClick={addAllBackgroundFields}
+                className="px-3 py-2 bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 rounded-lg border border-orange-500/30 text-sm"
+              >
+                Add All
+              </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="label">Default Study Field</label>
-                <select
-                  className="input"
-                  value={defaultStudyField}
-                  onChange={(e) => setDefaultStudyField(e.target.value)}
-                >
-                  {fieldOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="label">Default Question Category</label>
-                <select
-                  className="input"
-                  value={defaultCategory}
-                  onChange={(e) => setDefaultCategory(e.target.value)}
-                >
-                  {categoryOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <button
+                type="button"
+                onClick={() => addBackgroundField('field_of_study')}
+                className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 text-sm text-left"
+              >
+                + Field of Study
+                <div className="text-xs text-white/60">Students choose their field</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => addBackgroundField('class_level')}
+                className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 text-sm text-left"
+              >
+                + Education Level
+                <div className="text-xs text-white/60">Students choose current level</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => addBackgroundField('learning_goals')}
+                className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 text-sm text-left"
+              >
+                + Learning Goals
+                <div className="text-xs text-white/60">Students choose main goal</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => addBackgroundField('question_category')}
+                className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 text-sm text-left"
+              >
+                + Question Category
+                <div className="text-xs text-white/60">Students choose preferred category</div>
+              </button>
             </div>
             <div className="text-xs text-white/60 mt-2">
-              Changing defaults updates all fields that are unset or were using the previous default.
+              Students will be required to select Field of Study and Question Category in the form (applies to Preview and Intake).
             </div>
           </div>
 

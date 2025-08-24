@@ -547,6 +547,19 @@ export default function Admin() {
               </button>
             </>
           )}
+          {activeTab === "forms" && (
+            <>
+              <button
+                onClick={() => {
+                  setEditingFormConfig(null);
+                  setShowFormBuilder(true);
+                }}
+                className="btn btn-primary"
+              >
+                Create New Config
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -1183,73 +1196,16 @@ export default function Admin() {
               />
             </div>
           ) : (
-            <div>
-              <div className="mb-4 text-sm text-white/70">
-                Manage form configurations for student intake. The active
-                configuration will be used for all new student registrations.
-              </div>
-
-              <div className="space-y-4">
-                {formConfigs.length === 0 ? (
-                  <div className="card text-center py-8">
-                    <h3 className="text-lg font-medium text-white mb-2">
-                      No Form Configurations
-                    </h3>
-                    <p className="text-white/70 mb-4">
-                      Create your first form configuration to customize the
-                      student intake process.
-                    </p>
-                    <button
-                      onClick={() => openFormBuilder()}
-                      className="btn btn-primary"
-                    >
-                      Create Form Configuration
-                    </button>
-                  </div>
-                ) : (
-                  formConfigs.map((config) => (
-                    <div key={config.id} className="card">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center gap-3">
-                            <h3 className="text-lg font-medium text-white">
-                              {config.name}
-                            </h3>
-                            {config.is_active && (
-                              <span className="px-2 py-1 text-xs bg-green-500/20 text-green-300 rounded-full border border-green-500/30">
-                                Active
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-white/70 text-sm mt-1">
-                            {config.description}
-                          </p>
-                          <div className="text-white/50 text-xs mt-2">
-                            {config.fields?.length || 0} fields • Updated{" "}
-                            {new Date(config.updated_at).toLocaleDateString()}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => openFormBuilder(config)}
-                            className="btn btn-sm"
-                          >
-                            Edit
-                          </button>
-                          {!config.is_active && (
-                            <button
-                              onClick={() => deleteFormConfig(config.id)}
-                              className="btn btn-sm bg-red-500 hover:bg-red-600"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+            <div className="text-center py-10">
+              <p className="text-white/70 mb-4">
+                Create a form configuration for student intake.
+              </p>
+              <button
+                onClick={() => openFormBuilder()}
+                className="btn btn-primary"
+              >
+                Create New Configuration
+              </button>
             </div>
           )}
         </div>
