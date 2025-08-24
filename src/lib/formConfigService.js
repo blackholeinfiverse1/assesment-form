@@ -464,6 +464,13 @@ export class FormConfigService {
         if (!field.label || field.label.trim().length === 0) {
           errors.push(`Field ${index + 1}: Label is required`);
         }
+        // Require dynamic selections for study field and question category
+        if (!field.study_field_id || String(field.study_field_id).trim().length === 0) {
+          errors.push(`Field ${index + 1}: Study field must be selected`);
+        }
+        if (!field.category_id || String(field.category_id).trim().length === 0) {
+          errors.push(`Field ${index + 1}: Question category must be selected`);
+        }
         if (
           (field.type === FIELD_TYPES.SELECT ||
             field.type === FIELD_TYPES.RADIO ||

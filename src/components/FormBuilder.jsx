@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
 import { FIELD_TYPES, FormConfigService } from "../lib/formConfigService";
 import { EnhancedFormConfigService } from "../lib/enhancedFormConfigService";
+import { DynamicFieldService } from "../lib/dynamicFieldService";
+import { DynamicQuestionCategoryService } from "../lib/dynamicQuestionCategoryService";
 import DynamicForm from "./DynamicForm";
 import {
   Type,
@@ -100,6 +102,8 @@ const FieldEditor = ({
   onMoveDown,
   canMoveUp,
   canMoveDown,
+  fieldOptions,
+  categoryOptions,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [localField, setLocalField] = useState(field);
@@ -303,6 +307,45 @@ const FieldEditor = ({
             />
           </div>
 
+          {/* Dedicated classification section */}
+          <div className="p-4 rounded-xl border border-orange-400/30 bg-orange-500/10">
+            <div className="text-white font-semibold mb-3">Field Classification</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="label">Study Field</label>
+                <select
+                  value={localField.study_field_id || ""}
+                  onChange={(e) => handleChange("study_field_id", e.target.value)}
+                  className="input"
+                  required
+                >
+                  <option value="">Select study field</option>
+                  {fieldOptions?.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">Question Category</label>
+                <select
+                  value={localField.category_id || ""}
+                  onChange={(e) => handleChange("category_id", e.target.value)}
+                  className="input"
+                  required
+                >
+                  <option value="">Select category</option>
+                  {categoryOptions?.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2">
               <input
@@ -469,6 +512,76 @@ export default function FormBuilder({
   const [errors, setErrors] = useState([]);
   const [activeTab, setActiveTab] = useState("builder");
   const [previewData, setPreviewData] = useState({});
+  const [fieldOptions, setFieldOptions] = useState([]);
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [defaultStudyField, setDefaultStudyField] = useState("");
+  const [defaultCategory, setDefaultCategory] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const [fields, categories] = await Promise.all([
+          DynamicFieldService.getFieldOptions(),
+          DynamicQuestionCategoryService.getCategoryOptions(),
+        ]);
+        if (mounted) {
+          setFieldOptions(fields);
+          setCategoryOptions(categories);
+          // Initialize defaults if not set
+          setDefaultStudyField((prev) => prev || fields?.[0]?.value || "");
+          setDefaultCategory((prev) => prev || categories?.[0]?.value || "");
+        }
+      } catch (e) {
+        console.error("Failed to load dynamic options:", e);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    // Auto-assign study field and question category for fields that are missing them
+    if (!fieldOptions.length || !categoryOptions.length) return;
+
+    const run = async () => {
+      setConfig((prev) => {
+        const updated = { ...prev };
+        updated.fields = prev.fields.map((f) => {
+          let sf = f.study_field_id;
+          let cat = f.category_id;
+
+          // Default to first options if missing
+          if (!sf) sf = defaultStudyField || fieldOptions[0]?.value || "";
+          if (!cat) cat = defaultCategory || categoryOptions[0]?.value || "";
+
+          return { ...f, study_field_id: sf, category_id: cat };
+        });
+        return updated;
+      });
+
+      // Try to refine study field using detection on label/helpText
+      for (let i = 0; i < config.fields.length; i++) {
+        const f = config.fields[i];
+        if (f.label && !f._autoDetected) {
+          try {
+            const hint = `${f.label} ${f.helpText || ""}`;
+            const detected = await DynamicFieldService.detectFieldFromText(hint);
+            if (detected?.field_id) {
+              setConfig((prev) => {
+                const copy = { ...prev };
+                copy.fields = prev.fields.map((fld, idx) => idx === i ? { ...fld, study_field_id: fld.study_field_id || detected.field_id, _autoDetected: true } : fld);
+                return copy;
+              });
+            }
+          } catch {}
+        }
+      }
+    };
+
+    run();
+  }, [fieldOptions, categoryOptions, defaultStudyField, defaultCategory]);
 
   const addField = (fieldType = FIELD_TYPES.TEXT) => {
     const fieldTypeNames = {
@@ -493,6 +606,8 @@ export default function FormBuilder({
           ? "Enter a number"
           : "Enter text here",
       required: false,
+      study_field_id: defaultStudyField || fieldOptions?.[0]?.value || "",
+      category_id: defaultCategory || categoryOptions?.[0]?.value || "",
       order: config.fields.length + 1,
     };
 
@@ -685,6 +800,39 @@ export default function FormBuilder({
       {/* Form Builder Tab */}
       {activeTab === "builder" && (
         <div>
+          {/* Global classification defaults */}
+          <div className="mb-6 p-4 rounded-xl border border-white/20 bg-white/10">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-md font-semibold text-white">Field Classification Defaults</h4>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="label">Default Study Field</label>
+                <select
+                  className="input"
+                  value={defaultStudyField}
+                  onChange={(e) => setDefaultStudyField(e.target.value)}
+                >
+                  {fieldOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">Default Question Category</label>
+                <select
+                  className="input"
+                  value={defaultCategory}
+                  onChange={(e) => setDefaultCategory(e.target.value)}
+                >
+                  {categoryOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-md font-medium text-white">
               Form Fields ({config.fields.length})
@@ -771,6 +919,8 @@ export default function FormBuilder({
                 onMoveDown={() => moveField(index, "down")}
                 canMoveUp={index > 0}
                 canMoveDown={index < config.fields.length - 1}
+                fieldOptions={fieldOptions}
+                categoryOptions={categoryOptions}
               />
             ))}
 
