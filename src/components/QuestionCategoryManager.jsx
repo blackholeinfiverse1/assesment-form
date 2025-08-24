@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Save, X, ArrowUp, ArrowDown, Code, Brain, Calculator, MessageCircle, Globe, BookOpen, Newspaper, HelpCircle, Target, Clock, Star, Shield, Heart, Palette, Database, Music, Camera, Calendar, Home, Mail, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { DynamicQuestionCategoryService } from '../lib/dynamicQuestionCategoryService';
+import { supabase } from '../lib/supabaseClient';
 
 const QuestionCategoryManager = () => {
   const [categories, setCategories] = useState([]);
@@ -14,8 +15,7 @@ const QuestionCategoryManager = () => {
     description: '',
     icon: 'HelpCircle',
     color: 'text-gray-400 bg-gray-400/10 border-gray-400/20',
-    display_order: 0,
-    weight_percentage: 15.00
+    display_order: 0
   });
 
   // Available icons for question categories
@@ -51,10 +51,29 @@ const QuestionCategoryManager = () => {
     loadCategories();
   }, []);
 
+  // Realtime updates: refresh when categories change in DB
+  useEffect(() => {
+    const channel = supabase
+      .channel('question_categories_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'question_categories' },
+        () => {
+          // Ensure we always fetch fresh data after any change
+          loadCategories();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      try { supabase.removeChannel(channel); } catch {}
+    };
+  }, []);
+
   const loadCategories = async () => {
     setLoading(true);
     try {
-      const categoryList = await DynamicQuestionCategoryService.getAllCategories();
+      const categoryList = await DynamicQuestionCategoryService.loadCategories();
       setCategories(categoryList);
     } catch (error) {
       console.error('Error loading question categories:', error);
@@ -64,28 +83,51 @@ const QuestionCategoryManager = () => {
     }
   };
 
-  const handleAddCategory = async () => {
+  const handleAddCategory = async (data) => {
     try {
-      // Validate form data
-      if (!formData.category_id || !formData.name) {
-        toast.error('Category ID and Name are required');
+      const input = data || formData;
+
+      // Validate required fields
+      if (!input.name || input.name.trim() === '') {
+        toast.error('Name is required');
         return;
       }
 
-      // Check if category_id already exists
-      const existing = categories.find(cat => cat.category_id === formData.category_id);
-      if (existing) {
-        toast.error('Category ID already exists');
-        return;
+      
+      // Generate a slugified, unique category_id if missing
+      const slugify = (str) =>
+        (str || '')
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '')
+          .replace(/_+/g, '_')
+          .slice(0, 100);
+
+      const maxLen = 100;
+      let baseId = input.category_id && input.category_id.trim()
+        ? slugify(input.category_id)
+        : slugify(input.name) || `category_${Date.now()}`;
+      if (!baseId) baseId = `category_${Date.now()}`;
+
+      // Ensure uniqueness against currently loaded categories
+      const existingIds = new Set(categories.map(c => c.category_id));
+      let uniqueId = baseId;
+      let suffix = 2;
+      while (existingIds.has(uniqueId)) {
+        const suffixStr = `_${suffix}`;
+        const trimmedBase = baseId.slice(0, Math.max(1, maxLen - suffixStr.length));
+        uniqueId = `${trimmedBase}${suffixStr}`;
+        suffix++;
       }
 
-      // Validate weight percentage
-      if (formData.weight_percentage < 0 || formData.weight_percentage > 100) {
-        toast.error('Weight percentage must be between 0 and 100');
-        return;
-      }
+      const newCategory = {
+        ...input,
+        category_id: uniqueId,
+        display_order: typeof input.display_order === 'number' ? input.display_order : categories.length
+      };
 
-      await DynamicQuestionCategoryService.addCategory(formData);
+      await DynamicQuestionCategoryService.addCategory(newCategory);
       toast.success('Question category added successfully');
       setShowAddForm(false);
       setFormData({
@@ -94,8 +136,7 @@ const QuestionCategoryManager = () => {
         description: '',
         icon: 'HelpCircle',
         color: 'text-gray-400 bg-gray-400/10 border-gray-400/20',
-        display_order: 0,
-        weight_percentage: 15.00
+        display_order: 0
       });
       await loadCategories();
     } catch (error) {
@@ -106,13 +147,9 @@ const QuestionCategoryManager = () => {
 
   const handleUpdateCategory = async (categoryId, updates) => {
     try {
-      // Validate weight percentage if being updated
-      if (updates.weight_percentage !== undefined && (updates.weight_percentage < 0 || updates.weight_percentage > 100)) {
-        toast.error('Weight percentage must be between 0 and 100');
-        return;
-      }
-
-      await DynamicQuestionCategoryService.updateCategory(categoryId, updates);
+      
+      const { category_id, ...rest } = updates;
+      await DynamicQuestionCategoryService.updateCategory(categoryId, rest);
       toast.success('Question category updated successfully');
       setEditingCategory(null);
       await loadCategories();
@@ -185,8 +222,7 @@ const QuestionCategoryManager = () => {
         description: '',
         icon: 'HelpCircle',
         color: 'text-gray-400 bg-gray-400/10 border-gray-400/20',
-        display_order: categories.length,
-        weight_percentage: 15.00
+        display_order: categories.length
       }
     );
 
@@ -199,6 +235,7 @@ const QuestionCategoryManager = () => {
     return (
       <div className="space-y-4 p-4 bg-white/5 rounded-lg border border-white/20">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {category && (
           <div>
             <label className="block text-sm text-white/80 mb-2">Category ID</label>
             <input
@@ -210,6 +247,7 @@ const QuestionCategoryManager = () => {
               placeholder="unique_category_id"
             />
           </div>
+          )}
 
           <div>
             <label className="block text-sm text-white/80 mb-2">Name</label>
@@ -234,7 +272,7 @@ const QuestionCategoryManager = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm text-white/80 mb-2">Icon</label>
             <div className="relative">
@@ -270,20 +308,7 @@ const QuestionCategoryManager = () => {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm text-white/80 mb-2">Weight %</label>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              value={localFormData.weight_percentage}
-              onChange={(e) => setLocalFormData(prev => ({ ...prev, weight_percentage: parseFloat(e.target.value) || 0 }))}
-              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-md text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-orange-400"
-              placeholder="15.00"
-            />
-          </div>
-        </div>
+                  </div>
 
         <div className="flex justify-end gap-2">
           <button
@@ -377,7 +402,7 @@ const QuestionCategoryManager = () => {
                       </div>
                       <p className="text-sm text-white/70">{category.description}</p>
                       <div className="text-xs text-white/50 mt-1">
-                        Order: {category.display_order} | Weight: {category.weight_percentage}% | Icon: {category.icon}
+                        Order: {category.display_order} | Icon: {category.icon}
                       </div>
                     </div>
                   </div>

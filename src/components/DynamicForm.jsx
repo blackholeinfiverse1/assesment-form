@@ -3,6 +3,7 @@ import { FIELD_TYPES } from "../lib/formConfigService";
 import { GraduationCap, BookOpen, Target, User, Settings, Loader, FileText, Heart, Star, Shield, Clock, Calendar, Camera, Music, Palette, Code, Database, Globe, Mail, Phone, Home } from 'lucide-react';
 import { DynamicFieldService } from '../lib/dynamicFieldService';
 import { DynamicCategoryService } from '../lib/dynamicCategoryService';
+import { DynamicQuestionCategoryService } from '../lib/dynamicQuestionCategoryService';
 
 // Section header icons
 const SECTION_ICONS = {
@@ -448,7 +449,7 @@ export default function DynamicForm({
     const loadCategories = async () => {
       try {
         setLoadingCategories(true);
-        const categories = await DynamicCategoryService.getAllCategories();
+        const categories = await DynamicQuestionCategoryService.loadCategories();
         const options = (categories || [])
           .filter(c => c.is_active !== false)
           .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))

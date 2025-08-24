@@ -54,30 +54,26 @@ export const ASSIGNMENT_CONFIG = {
 export async function getDynamicCategoryDistribution(totalQuestions = 10) {
   try {
     const { DynamicQuestionCategoryService } = await import('../lib/dynamicQuestionCategoryService');
-    const weights = await DynamicQuestionCategoryService.getQuestionWeights();
-    const distribution = {};
-    
-    // Calculate question count for each category based on weights
-    Object.entries(weights).forEach(([categoryName, weight]) => {
-      const questionCount = Math.round((weight / 100) * totalQuestions);
-      distribution[categoryName] = Math.max(1, questionCount); // Ensure at least 1 question
-    });
-    
-    // Adjust if total doesn't match due to rounding
-    const currentTotal = Object.values(distribution).reduce((sum, count) => sum + count, 0);
-    if (currentTotal !== totalQuestions) {
-      const difference = totalQuestions - currentTotal;
-      const categories = Object.keys(distribution);
-      if (categories.length > 0) {
-        // Add/subtract from the first category
-        distribution[categories[0]] += difference;
-      }
+    const categories = await DynamicQuestionCategoryService.getAllCategories();
+    if (!categories || categories.length === 0) {
+      throw new Error('No active categories');
     }
-    
+
+    const names = categories.map(c => c.name);
+    const distribution = {};
+
+    // Evenly distribute questions across categories
+    const base = Math.floor(totalQuestions / names.length);
+    let remainder = totalQuestions % names.length;
+
+    names.forEach((name) => {
+      distribution[name] = base + (remainder > 0 ? 1 : 0);
+      if (remainder > 0) remainder--;
+    });
+
     return distribution;
   } catch (error) {
     console.error('Failed to get dynamic category distribution, using fallback:', error);
-    // Fallback to hardcoded distribution
     return ASSIGNMENT_CONFIG.CATEGORY_DISTRIBUTION;
   }
 }

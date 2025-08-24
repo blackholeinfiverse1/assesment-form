@@ -77,7 +77,6 @@ export class DynamicQuestionCategoryService {
         icon: 'Code',
         color: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
         display_order: 1,
-        weight_percentage: 25.00,
         is_active: true,
         is_system: true
       },
@@ -88,7 +87,6 @@ export class DynamicQuestionCategoryService {
         icon: 'Brain',
         color: 'text-purple-400 bg-purple-400/10 border-purple-400/20',
         display_order: 2,
-        weight_percentage: 20.00,
         is_active: true,
         is_system: true
       },
@@ -99,7 +97,6 @@ export class DynamicQuestionCategoryService {
         icon: 'Calculator',
         color: 'text-green-400 bg-green-400/10 border-green-400/20',
         display_order: 3,
-        weight_percentage: 20.00,
         is_active: true,
         is_system: true
       },
@@ -110,7 +107,6 @@ export class DynamicQuestionCategoryService {
         icon: 'MessageCircle',
         color: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
         display_order: 4,
-        weight_percentage: 15.00,
         is_active: true,
         is_system: true
       },
@@ -121,7 +117,6 @@ export class DynamicQuestionCategoryService {
         icon: 'Globe',
         color: 'text-pink-400 bg-pink-400/10 border-pink-400/20',
         display_order: 5,
-        weight_percentage: 10.00,
         is_active: true,
         is_system: true
       },
@@ -132,7 +127,6 @@ export class DynamicQuestionCategoryService {
         icon: 'BookOpen',
         color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
         display_order: 6,
-        weight_percentage: 5.00,
         is_active: true,
         is_system: true
       },
@@ -143,7 +137,6 @@ export class DynamicQuestionCategoryService {
         icon: 'Newspaper',
         color: 'text-red-400 bg-red-400/10 border-red-400/20',
         display_order: 7,
-        weight_percentage: 5.00,
         is_active: true,
         is_system: true
       }
@@ -186,7 +179,6 @@ export class DynamicQuestionCategoryService {
       description: category.description,
       icon: category.icon,
       color: category.color,
-      weight: category.weight_percentage
     }));
   }
 
@@ -215,31 +207,11 @@ export class DynamicQuestionCategoryService {
   /**
    * Get question weights for AI generation (replaces hardcoded weights)
    */
-  static async getQuestionWeights() {
-    const categories = await this.getAllCategories();
-    const weights = {};
-    
-    categories.forEach(category => {
-      weights[category.name] = category.weight_percentage || 15.00;
-    });
-    
-    return weights;
-  }
-
+  
   /**
    * Get question weights by category ID
    */
-  static async getQuestionWeightsByCategoryId() {
-    const categories = await this.getAllCategories();
-    const weights = {};
-    
-    categories.forEach(category => {
-      weights[category.category_id] = category.weight_percentage || 15.00;
-    });
-    
-    return weights;
-  }
-
+  
   /**
    * Get category mapping for backward compatibility
    * Maps old hardcoded category names to new category IDs
@@ -285,7 +257,6 @@ export class DynamicQuestionCategoryService {
         icon: categoryData.icon,
         color: categoryData.color,
         display_order: categoryData.display_order || 0,
-        weight_percentage: categoryData.weight_percentage || 15.00,
         is_active: true,
         is_system: false,
         created_at: new Date().toISOString(),
@@ -388,10 +359,7 @@ export class DynamicQuestionCategoryService {
   /**
    * Update category weight (admin function)
    */
-  static async updateCategoryWeight(categoryId, weightPercentage) {
-    return await this.updateCategory(categoryId, { weight_percentage: weightPercentage });
-  }
-
+  
   /**
    * Get questions by category ID
    */
@@ -429,17 +397,14 @@ export const {
   getCategoryByName,
   getCategoryOptions,
   getCategoriesWithStats,
-  getQuestionWeights,
-  getQuestionWeightsByCategoryId,
-  mapOldCategoryToId,
+    mapOldCategoryToId,
   refresh,
   addCategory,
   updateCategory,
   deleteCategory,
   reorderCategories,
   toggleCategoryStatus,
-  updateCategoryWeight,
-  getQuestionsByCategory,
+    getQuestionsByCategory,
   getQuestionsByCategories
 } = DynamicQuestionCategoryService;
 

@@ -122,7 +122,7 @@ const KEYWORD_DEFAULTS = {
 };
 
 // Fields that students must always provide and cannot be removed
-const PROTECTED_FIELD_IDS = ['field_of_study','question_category','grade'];
+const PROTECTED_FIELD_IDS = ['question_category','grade'];
 
 function mergeValidation(existing, extra) {
   return { ...(existing || {}), ...(extra || {}) };
@@ -734,26 +734,7 @@ export default function FormBuilder({
           category_id: defaultCategory || categoryOptions?.[0]?.value || ''
         });
       }
-      if (!present.has('field_of_study')) {
-        const templ = BACKGROUND_SELECTION_FIELDS?.field_of_study;
-        const fallback = {
-          id: 'field_of_study',
-          type: FIELD_TYPES.SELECT,
-          label: 'Field of Study',
-          section: 'background_selection',
-          order: -3,
-          options: []
-        };
-        toAdd.push({
-          ...(templ || fallback),
-          required: true,
-          section: (templ && templ.section) || 'background_selection',
-          order: (templ && (templ.order ?? -3)) ?? -3,
-          study_field_id: defaultStudyField || fieldOptions?.[0]?.value || '',
-          category_id: defaultCategory || categoryOptions?.[0]?.value || ''
-        });
-      }
-      if (!present.has('question_category')) {
+            if (!present.has('question_category')) {
         const templ = BACKGROUND_SELECTION_FIELDS?.question_category;
         const fallback = {
           id: 'question_category',
@@ -1147,57 +1128,7 @@ export default function FormBuilder({
       {activeTab === "builder" && (
         <div>
           
-          {/* Student Background Fields (students will choose these in the form) */}
-          <div className="mb-6 p-4 rounded-xl border border-white/20 bg-white/10">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-md font-semibold text-white">Student Background Fields</h4>
-              <button
-                type="button"
-                onClick={addAllBackgroundFields}
-                className="px-3 py-2 bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 rounded-lg border border-orange-500/30 text-sm"
-              >
-                Add All
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <button
-                type="button"
-                onClick={() => addBackgroundField('field_of_study')}
-                className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 text-sm text-left"
-              >
-                + Field of Study
-                <div className="text-xs text-white/60">Students choose their field</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => addBackgroundField('class_level')}
-                className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 text-sm text-left"
-              >
-                + Education Level
-                <div className="text-xs text-white/60">Students choose current level</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => addBackgroundField('learning_goals')}
-                className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 text-sm text-left"
-              >
-                + Learning Goals
-                <div className="text-xs text-white/60">Students choose main goal</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => addBackgroundField('question_category')}
-                className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/20 text-sm text-left"
-              >
-                + Question Category
-                <div className="text-xs text-white/60">Students choose preferred category</div>
-              </button>
-            </div>
-            <div className="text-xs text-white/60 mt-2">
-              Students will be required to select Field of Study and Question Category in the form (applies to Preview and Intake).
-            </div>
-          </div>
-
+          
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-md font-medium text-white">
               Form Fields ({config.fields.length})

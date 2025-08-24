@@ -471,10 +471,12 @@ export class FormConfigService {
         if (!field.category_id || String(field.category_id).trim().length === 0) {
           errors.push(`Field ${index + 1}: Question category must be selected`);
         }
+        const dynamicOptionFields = new Set(['field_of_study','question_category']);
         if (
           (field.type === FIELD_TYPES.SELECT ||
             field.type === FIELD_TYPES.RADIO ||
             field.type === FIELD_TYPES.MULTI_SELECT) &&
+          !dynamicOptionFields.has(field.id) &&
           (!field.options ||
             !Array.isArray(field.options) ||
             field.options.length === 0)
