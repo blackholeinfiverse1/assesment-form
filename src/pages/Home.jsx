@@ -121,12 +121,6 @@ export default function Home() {
               >
                 🚀 Start Learning
               </Link>
-              <Link
-                to="/admin"
-                className="bg-white/10 hover:bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20 hover:border-white/30 transition-all duration-300 text-xs w-full sm:w-auto font-medium"
-              >
-                Admin Portal
-              </Link>
             </div>
           </div>
         </div>
