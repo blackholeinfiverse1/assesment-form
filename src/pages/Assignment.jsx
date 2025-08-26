@@ -5,11 +5,13 @@ import Assignment from '../components/Assignment';
 import AssignmentResults from '../components/AssignmentResults';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { CLERK_ENABLED } from '../config/auth';
+import { useI18n } from "../lib/i18n";
 import { scoringService } from '../lib/scoringService';
 import { supabase } from '../lib/supabaseClient';
 
 export default function AssignmentPage() {
   const [currentView, setCurrentView] = useState('assignment'); // 'assignment', 'evaluating', 'results'
+  const { t } = useI18n();
   const [_assignmentAttempt, setAssignmentAttempt] = useState(null);
   const [evaluationResults, setEvaluationResults] = useState(null);
   const { user } = useUser();
@@ -19,7 +21,7 @@ export default function AssignmentPage() {
     setCurrentView('evaluating');
 
     // Show evaluation progress
-    const evaluationToast = toast.loading('Evaluating your assignment with AI...');
+    const evaluationToast = toast.loading(t('assignment.evaluatingSubtitle'));
 
     try {
       // Prepare user context for evaluation
@@ -250,17 +252,17 @@ export default function AssignmentPage() {
         <div className="text-center space-y-6">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-orange-500 mx-auto"></div>
           <div className="space-y-2">
-            <h2 className="text-xl font-semibold text-white">Evaluating Your Assignment</h2>
-            <p className="text-white/70">Our AI is analyzing your responses...</p>
+            <h2 className="text-xl font-semibold text-white">{t('assignment.evaluatingTitle')}</h2>
+            <p className="text-white/70">{t('assignment.evaluatingSubtitle')}</p>
             <div className="text-sm text-white/60">
-              This may take a few minutes as we evaluate each answer for accuracy, explanation quality, and reasoning clarity.
+              {t('assignment.checkingAccuracy')} • {t('assignment.evaluatingExplanation')} • {t('assignment.analyzingReasoning')}
             </div>
           </div>
           <div className="space-y-2">
-            <div className="text-sm text-orange-400">✓ Checking answers for accuracy</div>
-            <div className="text-sm text-orange-400">✓ Evaluating explanation quality</div>
-            <div className="text-sm text-orange-400">✓ Analyzing reasoning clarity</div>
-            <div className="text-sm text-white/60">⏳ Generating personalized feedback</div>
+            <div className="text-sm text-orange-400">{t('assignment.checkingAccuracy')}</div>
+            <div className="text-sm text-orange-400">{t('assignment.evaluatingExplanation')}</div>
+            <div className="text-sm text-orange-400">{t('assignment.analyzingReasoning')}</div>
+            <div className="text-sm text-white/60">{t('assignment.generatingFeedback')}</div>
           </div>
         </div>
       </div>

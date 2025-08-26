@@ -5,10 +5,12 @@ import { useNavigate, Link } from "react-router-dom";
 import DynamicForm from "../components/DynamicForm";
 import { FormConfigService } from "../lib/formConfigService";
 import { ArrowLeft } from 'lucide-react';
+import { useI18n } from "../lib/i18n";
 import toast from 'react-hot-toast';
 
 function Intake() {
   const { user } = useUser();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -221,7 +223,7 @@ function Intake() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-white text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p>Loading your personalized form...</p>
+          <p>{t('intake.loadingForm')}</p>
         </div>
       </div>
     );
@@ -231,9 +233,9 @@ function Intake() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-white text-center">
-          <p>Form configuration not available</p>
+          <p>{t('intake.formConfigNotAvailable')}</p>
           <Link to="/dashboard" className="text-orange-400 hover:text-orange-300 mt-2 inline-block">
-            Return to Dashboard
+            {t('intake.returnToDashboard')}
           </Link>
         </div>
       </div>
@@ -252,17 +254,17 @@ function Intake() {
                   className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
                 >
                   <ArrowLeft className="w-5 h-5" />
-                  {isEditing ? 'Back to Dashboard' : 'Back'}
+                  {isEditing ? t('intake.backToDashboard') : t('intake.back')}
                 </Link>
               </div>
               
               <h1 className="text-3xl font-bold text-white mb-2">
-                {isEditing ? 'Edit Your Profile' : 'Welcome to Gurukul!'}
+                {isEditing ? t('intake.editYourProfile') : t('intake.welcomeToGurukul')}
               </h1>
               <p className="text-white/70">
                 {isEditing 
-                  ? 'Update your information and learning preferences' 
-                  : 'Tell us about yourself to personalize your learning experience'
+                  ? t('intake.updateInfo') 
+                  : t('intake.tellUsAboutYou')
                 }
               </p>
               

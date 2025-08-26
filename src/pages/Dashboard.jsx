@@ -9,10 +9,12 @@ import {
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import { CLERK_ENABLED } from '../config/auth'
+import { useI18n } from "../lib/i18n";
 import { toast } from 'react-hot-toast'
 
 export default function Dashboard() {
   const { user } = useUser()
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true)
   const [dashboardData, setDashboardData] = useState({
     recentAttempts: [],
@@ -68,7 +70,7 @@ export default function Dashboard() {
 
     } catch (error) {
       console.error('Error loading dashboard data:', error)
-      toast.error('Failed to load dashboard data')
+      toast.error(t('dashboard.loading') || 'Failed to load dashboard data')
     } finally {
       setLoading(false)
     }
@@ -228,7 +230,7 @@ export default function Dashboard() {
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold text-white">{dashboardData.stats.averageScore.toFixed(1)}%</div>
-                    <div className="text-sm text-orange-200/60">Current Level</div>
+                    <div className="text-sm text-orange-200/60">{t('dashboard.currentLevel')}</div>
                   </div>
                 </div>
               </div>
@@ -299,12 +301,12 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between mb-6">
                       <div>
                         <h3 className="text-xl font-semibold text-white flex items-center gap-3">
-                          <Activity className="h-6 w-6 text-blue-400" /> Assessment History
+                          <Activity className="h-6 w-6 text-blue-400" /> {t('dashboard.assessmentHistory')}
                         </h3>
-                        <p className="text-white/50 text-sm mt-2">Your recent performance across multi-domain assessments</p>
+                        <p className="text-white/50 text-sm mt-2">{t('dashboard.assessmentHistoryDesc')}</p>
                       </div>
                       <Link to="/assignment" className="bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 px-4 py-2 rounded-xl border border-orange-400/30 transition-all text-sm font-medium">
-                        New Assessment
+                        {t('dashboard.newAssessment')}
                       </Link>
                     </div>
                     <div className="space-y-4">
@@ -312,7 +314,7 @@ export default function Dashboard() {
                         <div key={attempt.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
                           <div className="flex items-center gap-4">
                             <div className={`px-3 py-2 rounded-lg text-sm font-medium ${getGradeColor(attempt.grade)} border border-current/30`}>
-                              Grade {attempt.grade}
+                              {t('dashboard.grade')} {attempt.grade}
                             </div>
                             <div>
                               <div className="text-lg font-medium text-white flex items-center gap-2">
@@ -321,7 +323,7 @@ export default function Dashboard() {
                                 {attempt.percentage >= 80 && attempt.percentage < 90 && <span className="text-sm">⭐</span>}
                               </div>
                               <div className="text-white/60 text-sm">
-                                {attempt.total_questions} questions • {formatTime(attempt.time_taken_seconds)}
+                                {attempt.total_questions} {t('dashboard.questions')} • {formatTime(attempt.time_taken_seconds)}
                               </div>
                             </div>
                           </div>
@@ -329,7 +331,7 @@ export default function Dashboard() {
                             <div className="text-white/80 text-sm font-medium">{formatDate(attempt.created_at)}</div>
                             <div className="text-white/50 text-xs mt-1 flex items-center gap-1">
                               <Brain className="h-3 w-3" />
-                              AI Evaluated
+                              {t('dashboard.aiEvaluated')}
                             </div>
                           </div>
                         </div>
@@ -341,22 +343,22 @@ export default function Dashboard() {
                   <div className="space-y-6">
                     <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-orange-400/20">
                       <h3 className="text-xl font-semibold text-white flex items-center gap-3 mb-4">
-                        <Zap className="h-6 w-6 text-orange-400" /> Quick Actions
+                      <Zap className="h-6 w-6 text-orange-400" /> {t('dashboard.quickActions')}
                       </h3>
                       <div className="space-y-3">
                         <Link to="/assignment" className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-400/30 hover:from-orange-500/30 transition-all group">
                           <Target className="w-6 h-6 text-orange-400" />
                           <div className="flex-1 text-left">
-                            <div className="text-sm font-medium text-white">Take Assessment</div>
-                            <div className="text-xs text-orange-200/80">AI-powered evaluation</div>
+                            <div className="text-sm font-medium text-white">{t('dashboard.takeAssessment')}</div>
+                            <div className="text-xs text-orange-200/80">{t('dashboard.aiPoweredEvaluation')}</div>
                           </div>
                           <ChevronRight className="w-5 h-5 text-white/40" />
                         </Link>
                         <Link to="/intake" className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-r from-purple-500/20 to-indigo-500/20 border border-purple-400/30 hover:from-purple-500/30 transition-all group">
                           <Users className="w-6 h-6 text-purple-400" />
                           <div className="flex-1 text-left">
-                            <div className="text-sm font-medium text-white">Edit Profile</div>
-                            <div className="text-xs text-purple-200/80">Update information</div>
+                            <div className="text-sm font-medium text-white">{t('dashboard.editProfile')}</div>
+                            <div className="text-xs text-purple-200/80">{t('dashboard.updateInformation')}</div>
                           </div>
                           <ChevronRight className="w-5 h-5 text-white/40" />
                         </Link>
@@ -367,7 +369,7 @@ export default function Dashboard() {
                     {dashboardData.achievements.length > 0 && (
                       <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-yellow-400/20">
                         <h3 className="text-xl font-semibold text-white flex items-center gap-3 mb-4">
-                          <Award className="h-6 w-6 text-yellow-400" /> Achievements
+                          <Award className="h-6 w-6 text-yellow-400" /> {t('dashboard.achievements')}
                         </h3>
                         <div className="space-y-3">
                           {dashboardData.achievements.slice(0, 2).map((achievement, index) => (
@@ -390,43 +392,43 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between mb-6">
                     <div>
                       <h3 className="text-xl font-semibold text-white flex items-center gap-3">
-                        <Map className="h-6 w-6 text-green-400" /> Ancient Gurukul Learning System
+                        <Map className="h-6 w-6 text-green-400" /> {t('dashboard.ancientGurukul')}
                       </h3>
-                      <p className="text-white/50 text-sm mt-2">Traditional wisdom meets modern AI-powered learning</p>
+                      <p className="text-white/50 text-sm mt-2">{t('dashboard.ancientGurukulDesc')}</p>
                     </div>
                     <div className="text-sm text-green-400/80 font-medium px-3 py-1 bg-green-500/20 rounded-lg">
-                      5000+ Years Old
+                      {t('dashboard.yearsOld')}
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className={`text-center p-6 rounded-xl border transition-all ${
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                    <div className={`text-center p-4 sm:p-6 rounded-xl border transition-all ${
                       dashboardData.stats.averageScore < 75 ? 
                       'bg-gradient-to-br from-yellow-500/30 to-orange-500/30 border-yellow-400/50 shadow-lg' : 
                       'bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border-yellow-400/30'
                     }`}>
-                      <div className="text-4xl mb-3">🌱</div>
-                      <div className="text-lg font-semibold text-white mb-2">Seed Level (Beej)</div>
-                      <div className="text-sm text-yellow-200/80 mb-3">Foundation building • Core concepts</div>
+                      <div className="text-2xl sm:text-4xl mb-2 sm:mb-3">🌱</div>
+                      <div className="text-base sm:text-lg font-semibold text-white mb-1 sm:mb-2">Seed Level (Beej)</div>
+                      <div className="text-xs sm:text-sm text-yellow-200/80 mb-2 sm:mb-3">Foundation building • Core concepts</div>
                       <div className="text-xs text-yellow-300/60">Absorb fundamental knowledge across domains</div>
                     </div>
-                    <div className={`text-center p-6 rounded-xl border transition-all ${
+                    <div className={`text-center p-4 sm:p-6 rounded-xl border transition-all ${
                       dashboardData.stats.averageScore >= 75 && dashboardData.stats.averageScore < 90 ? 
                       'bg-gradient-to-br from-green-500/30 to-emerald-500/30 border-green-400/50 shadow-lg' : 
                       'bg-gradient-to-br from-green-500/20 to-emerald-500/20 border-green-400/30'
                     }`}>
-                      <div className="text-4xl mb-3">🌳</div>
-                      <div className="text-lg font-semibold text-white mb-2">Tree Level (Vriksha)</div>
-                      <div className="text-sm text-green-200/80 mb-3">Growth phase • Skill development</div>
+                      <div className="text-2xl sm:text-4xl mb-2 sm:mb-3">🌳</div>
+                      <div className="text-base sm:text-lg font-semibold text-white mb-1 sm:mb-2">Tree Level (Vriksha)</div>
+                      <div className="text-xs sm:text-sm text-green-200/80 mb-2 sm:mb-3">Growth phase • Skill development</div>
                       <div className="text-xs text-green-300/60">Expanding branches of specialized knowledge</div>
                     </div>
-                    <div className={`text-center p-6 rounded-xl border transition-all ${
+                    <div className={`text-center p-4 sm:p-6 rounded-xl border transition-all ${
                       dashboardData.stats.averageScore >= 90 ? 
                       'bg-gradient-to-br from-blue-500/30 to-cyan-500/30 border-blue-400/50 shadow-lg' : 
                       'bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border-blue-400/30'
                     }`}>
-                      <div className="text-4xl mb-3">☁️</div>
-                      <div className="text-lg font-semibold text-white mb-2">Sky Level (Akash)</div>
-                      <div className="text-sm text-blue-200/80 mb-3">Mastery • Wisdom synthesis</div>
+                      <div className="text-2xl sm:text-4xl mb-2 sm:mb-3">☁️</div>
+                      <div className="text-base sm:text-lg font-semibold text-white mb-1 sm:mb-2">Sky Level (Akash)</div>
+                      <div className="text-xs sm:text-sm text-blue-200/80 mb-2 sm:mb-3">Mastery • Wisdom synthesis</div>
                       <div className="text-xs text-blue-300/60">Boundless understanding across subjects</div>
                     </div>
                   </div>
@@ -441,8 +443,8 @@ export default function Dashboard() {
                       <Star className="h-12 w-12 text-orange-400" />
                     </div>
                     <div>
-                      <h2 className="text-3xl font-bold text-white">Start Your Journey</h2>
-                      <p className="text-orange-200 text-lg">Take your first assessment to unlock analytics</p>
+                      <h2 className="text-3xl font-bold text-white">{t('dashboard.startYourJourney')}</h2>
+                      <p className="text-orange-200 text-lg">{t('dashboard.takeYourFirstAssessment')}</p>
                     </div>
                   </div>
                   
@@ -467,7 +469,7 @@ export default function Dashboard() {
                   
                   <Link to="/assignment" className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-lg">
                     <PlayCircle className="h-6 w-6" />
-                    Take Your First Assessment
+                    {t('dashboard.takeYourFirstAssessmentCta')}
                   </Link>
                 </div>
               </div>
@@ -482,8 +484,8 @@ export default function Dashboard() {
                   <Target className="h-12 w-12 text-orange-400" />
                 </div>
                 <div>
-                  <h2 className="text-3xl font-bold text-white">Experience Gurukul Platform</h2>
-                  <p className="text-orange-200 text-lg">AI-powered assessments and learning</p>
+                  <h2 className="text-3xl font-bold text-white">{t('dashboard.experienceGurukul')}</h2>
+                  <p className="text-orange-200 text-lg">{t('dashboard.aiPoweredAssessments')}</p>
                 </div>
               </div>
               
@@ -508,7 +510,7 @@ export default function Dashboard() {
               
               <Link to="/assignment" className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 text-lg">
                 <Target className="h-6 w-6" />
-                Try Assessment Now
+                {t('dashboard.tryAssessmentNow')}
               </Link>
             </div>
           </div>

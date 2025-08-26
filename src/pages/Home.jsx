@@ -64,19 +64,19 @@ export default function Home() {
           {/* Learning Path */}
           <div className="text-center space-y-2 relative z-10">
             <h2 className="text-sm sm:text-lg font-semibold text-white/90 mb-2">{t("home.journeyTitle")}</h2>
-            <div className="flex justify-center items-center gap-2 sm:gap-4 bg-white/5 rounded-xl p-3 border border-white/10">
-              <div className="flex items-center gap-2 bg-green-500/20 rounded-lg px-3 py-1 border border-green-500/30">
-                <span className="text-sm sm:text-lg">🌱</span>
+            <div className="flex justify-center items-center gap-1.5 sm:gap-4 bg-white/5 rounded-xl p-2 sm:p-3 border border-white/10">
+              <div className="flex items-center gap-1.5 sm:gap-2 bg-green-500/20 rounded-lg px-2 sm:px-3 py-0.5 sm:py-1 border border-green-500/30">
+                <span className="text-xs sm:text-lg">🌱</span>
                 <span className="text-green-300 font-medium text-xs sm:text-sm">{t("home.seed")}</span>
               </div>
-              <span className="text-white/70 text-sm font-bold">→</span>
-              <div className="flex items-center gap-2 bg-blue-500/20 rounded-lg px-3 py-1 border border-blue-500/30">
-                <span className="text-sm sm:text-lg">🌳</span>
+              <span className="text-white/70 text-xs sm:text-sm font-bold">→</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 bg-blue-500/20 rounded-lg px-2 sm:px-3 py-0.5 sm:py-1 border border-blue-500/30">
+                <span className="text-xs sm:text-lg">🌳</span>
                 <span className="text-blue-300 font-medium text-xs sm:text-sm">{t("home.tree")}</span>
               </div>
-              <span className="text-white/70 text-sm font-bold">→</span>
-              <div className="flex items-center gap-2 bg-purple-500/20 rounded-lg px-3 py-1 border border-purple-500/30">
-                <span className="text-sm sm:text-lg">🌌</span>
+              <span className="text-white/70 text-xs sm:text-sm font-bold">→</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 bg-purple-500/20 rounded-lg px-2 sm:px-3 py-0.5 sm:py-1 border border-purple-500/30">
+                <span className="text-xs sm:text-lg">🌌</span>
                 <span className="text-purple-300 font-medium text-xs sm:text-sm">{t("home.sky")}</span>
               </div>
             </div>
