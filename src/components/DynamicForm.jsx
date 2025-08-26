@@ -413,19 +413,26 @@ export default function DynamicForm({
       try {
         setLoadingStudyFields(true);
         const fields = await DynamicFieldService.getAllFields();
-        const options = fields.map(field => ({
-          value: field.field_id,
-          label: field.name,
-          icon: field.icon,
-          description: field.description
-        }));
+        const options = fields.map(field => {
+          const displayName = field.field_id === 'stem'
+            ? 'STEM (Science, Technology, Engineering, Mathematics)'
+            : field.field_id === 'business'
+              ? 'Business & Commerce'
+              : field.name;
+          return {
+            value: field.field_id,
+            label: displayName,
+            icon: field.icon,
+            description: field.description
+          };
+        });
         setStudyFieldOptions(options);
       } catch (error) {
         console.error('Error loading study fields:', error);
         // Fallback options
         setStudyFieldOptions([
-          { value: 'stem', label: 'STEM', icon: '🔬', description: 'Science, Technology, Engineering, Math' },
-          { value: 'business', label: 'Business', icon: '💼', description: 'Business & Economics' },
+          { value: 'stem', label: 'STEM (Science, Technology, Engineering, Mathematics)', icon: '🔬', description: 'Science, Technology, Engineering, Math' },
+          { value: 'business', label: 'Business & Commerce', icon: '💼', description: 'Business & Economics' },
           { value: 'social_sciences', label: 'Social Sciences', icon: '🏛️', description: 'Social Sciences & Humanities' },
           { value: 'health_medicine', label: 'Health & Medicine', icon: '⚕️', description: 'Healthcare and Medical Sciences' },
           { value: 'creative_arts', label: 'Creative Arts', icon: '🎨', description: 'Arts, Design, and Creative Fields' }
