@@ -1,26 +1,47 @@
 import { Link } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Target, BarChart3, Zap } from "lucide-react";
 import { SignedIn, SignedOut } from "@clerk/clerk-react";
 import StudentRedirect from "../components/StudentRedirect";
 import { CLERK_ENABLED } from "../config/auth";
 
 export default function Home() {
-  // Disable scrolling completely on this page
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile via coarse pointer or small viewport; update on resize/orientation
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-    
+    const check = () =>
+      window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 768;
+    const update = () => setIsMobile(check());
+
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
     return () => {
-      document.body.style.overflow = 'auto';
-      document.documentElement.style.overflow = 'auto';
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
     };
   }, []);
 
+  // Control page scrolling: disabled on desktop, enabled on mobile
+  useEffect(() => {
+    if (isMobile) {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    } else {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, [isMobile]);
+
   const homeContent = (
-    <div className="fixed inset-0 flex items-center justify-center p-4 text-white overflow-hidden">
-      <div className="w-full max-w-4xl h-full flex items-center justify-center overflow-hidden">
-        <div className="bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-6 sm:p-8 space-y-4 overflow-hidden max-h-full relative">
+    <div className={`${isMobile ? 'min-h-screen overflow-y-auto' : 'fixed inset-0 overflow-hidden'} flex items-center justify-center p-4 text-white`}>
+      <div className={`w-full max-w-4xl ${isMobile ? 'h-auto overflow-visible' : 'h-full overflow-hidden'} flex items-center justify-center`}>
+        <div className={`bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-lg border border-white/20 rounded-2xl shadow-2xl p-6 sm:p-8 space-y-4 ${isMobile ? 'overflow-y-auto max-h-none' : 'overflow-hidden max-h-full'} relative`}>
           {/* Decorative elements */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-purple-500/20 to-transparent rounded-full blur-2xl"></div>
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-blue-500/20 to-transparent rounded-full blur-xl"></div>
