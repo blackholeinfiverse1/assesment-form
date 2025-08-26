@@ -4,9 +4,11 @@ import { Target, BarChart3, Zap } from "lucide-react";
 import { SignedIn, SignedOut } from "@clerk/clerk-react";
 import StudentRedirect from "../components/StudentRedirect";
 import { CLERK_ENABLED } from "../config/auth";
+import { useI18n } from "../lib/i18n";
 
 export default function Home() {
   const [isMobile, setIsMobile] = useState(false);
+  const { t } = useI18n();
 
   // Detect mobile via coarse pointer or small viewport; update on resize/orientation
   useEffect(() => {
@@ -49,39 +51,37 @@ export default function Home() {
           {/* Main Hero Section */}
           <div className="text-center space-y-2 relative z-10">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-white via-blue-100 to-purple-200 bg-clip-text text-transparent drop-shadow-sm">
-              Welcome to Gurukul
+              {t("home.title")}
             </h1>
             <p className="text-sm sm:text-base lg:text-lg text-white/90 font-medium">
-              Your AI-Powered Learning Journey
+              {t("home.subtitle")}
             </p>
             <p className="text-xs sm:text-sm text-white/80 max-w-2xl mx-auto leading-relaxed">
-              Unlock your potential through AI-powered assessments tailored to your unique learning style. 
-              Master coding, logic, mathematics, language arts, cultural studies, and Vedic wisdom through 
-              our comprehensive evaluation system.
+              {t("home.description")}
             </p>
           </div>
 
           {/* Learning Path */}
           <div className="text-center space-y-2 relative z-10">
-            <h2 className="text-sm sm:text-lg font-semibold text-white/90 mb-2">Your Learning Journey</h2>
+            <h2 className="text-sm sm:text-lg font-semibold text-white/90 mb-2">{t("home.journeyTitle")}</h2>
             <div className="flex justify-center items-center gap-2 sm:gap-4 bg-white/5 rounded-xl p-3 border border-white/10">
               <div className="flex items-center gap-2 bg-green-500/20 rounded-lg px-3 py-1 border border-green-500/30">
                 <span className="text-sm sm:text-lg">🌱</span>
-                <span className="text-green-300 font-medium text-xs sm:text-sm">Seed</span>
+                <span className="text-green-300 font-medium text-xs sm:text-sm">{t("home.seed")}</span>
               </div>
               <span className="text-white/70 text-sm font-bold">→</span>
               <div className="flex items-center gap-2 bg-blue-500/20 rounded-lg px-3 py-1 border border-blue-500/30">
                 <span className="text-sm sm:text-lg">🌳</span>
-                <span className="text-blue-300 font-medium text-xs sm:text-sm">Tree</span>
+                <span className="text-blue-300 font-medium text-xs sm:text-sm">{t("home.tree")}</span>
               </div>
               <span className="text-white/70 text-sm font-bold">→</span>
               <div className="flex items-center gap-2 bg-purple-500/20 rounded-lg px-3 py-1 border border-purple-500/30">
                 <span className="text-sm sm:text-lg">🌌</span>
-                <span className="text-purple-300 font-medium text-xs sm:text-sm">Sky</span>
+                <span className="text-purple-300 font-medium text-xs sm:text-sm">{t("home.sky")}</span>
               </div>
             </div>
             <p className="text-white/70 text-xs max-w-lg mx-auto italic">
-              Foundation → Growth → Mastery
+              {t("home.journeyCaption")}
             </p>
           </div>
 
@@ -95,9 +95,9 @@ export default function Home() {
                   <Target className="w-6 h-6 sm:w-8 sm:h-8 text-orange-300" strokeWidth={2} />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="font-bold text-white text-sm sm:text-base leading-tight">Smart Assessment</h3>
-                  <p className="text-orange-200/80 text-xs sm:text-sm font-medium">Tailored evaluation</p>
-                  <p className="text-orange-100/60 text-xs leading-relaxed hidden sm:block">AI analyzes your responses to create personalized learning paths</p>
+                  <h3 className="font-bold text-white text-sm sm:text-base leading-tight">{t("home.features.smartTitle")}</h3>
+                  <p className="text-orange-200/80 text-xs sm:text-sm font-medium">{t("home.features.smartTag")}</p>
+                  <p className="text-orange-100/60 text-xs leading-relaxed hidden sm:block">{t("home.features.smartDesc")}</p>
                 </div>
               </div>
             </div>
@@ -108,9 +108,9 @@ export default function Home() {
                   <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-blue-300" strokeWidth={2} />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="font-bold text-white text-sm sm:text-base leading-tight">Progress Insights</h3>
-                  <p className="text-blue-200/80 text-xs sm:text-sm font-medium">Detailed feedback</p>
-                  <p className="text-blue-100/60 text-xs leading-relaxed hidden sm:block">Comprehensive analytics track your growth across all domains</p>
+                  <h3 className="font-bold text-white text-sm sm:text-base leading-tight">{t("home.features.progressTitle")}</h3>
+                  <p className="text-blue-200/80 text-xs sm:text-sm font-medium">{t("home.features.progressTag")}</p>
+                  <p className="text-blue-100/60 text-xs leading-relaxed hidden sm:block">{t("home.features.progressDesc")}</p>
                 </div>
               </div>
             </div>
@@ -121,9 +121,9 @@ export default function Home() {
                   <Zap className="w-6 h-6 sm:w-8 sm:h-8 text-purple-300" strokeWidth={2} />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="font-bold text-white text-sm sm:text-base leading-tight">Dynamic Learning</h3>
-                  <p className="text-purple-200/80 text-xs sm:text-sm font-medium">Evolving content</p>
-                  <p className="text-purple-100/60 text-xs leading-relaxed hidden sm:block">Content adapts and evolves based on your learning preferences</p>
+                  <h3 className="font-bold text-white text-sm sm:text-base leading-tight">{t("home.features.dynamicTitle")}</h3>
+                  <p className="text-purple-200/80 text-xs sm:text-sm font-medium">{t("home.features.dynamicTag")}</p>
+                  <p className="text-purple-100/60 text-xs leading-relaxed hidden sm:block">{t("home.features.dynamicDesc")}</p>
                 </div>
               </div>
             </div>
@@ -132,7 +132,7 @@ export default function Home() {
           {/* Call to Action */}
           <div className="text-center space-y-3 relative z-10">
             <p className="text-white/80 text-xs sm:text-sm font-medium">
-              Ready to discover your strengths and unlock new possibilities?
+              {t("home.ctaLead")}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
@@ -140,7 +140,7 @@ export default function Home() {
                 to="/dashboard"
                 className="bg-gradient-to-r from-orange-600 via-orange-500 to-red-600 hover:from-orange-700 hover:via-orange-600 hover:to-red-700 text-white px-6 sm:px-8 py-3 rounded-xl text-sm sm:text-base font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 w-full sm:w-auto border border-orange-500/30"
               >
-                🚀 Start Learning
+                {t("home.ctaStart")}
               </Link>
             </div>
           </div>
